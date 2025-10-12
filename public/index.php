@@ -13,8 +13,10 @@ Router::post('/data/:id/meow', function (Request $req, Response $res, $id) {
     // $id   = $req->get('id', 'unknown');
     $body = $req->body();
     $res->json([
+        'id'            => $req->get('id', 'unknown'),
         'received_id'   => $id,
         'received_body' => json_decode($body, true),
+        'message'       => $req->post('data.message', 'Hello World!'),
     ]);
 });
 

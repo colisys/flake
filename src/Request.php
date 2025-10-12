@@ -59,7 +59,10 @@ class Request
     public static function post(string $name, $default = null): mixed
     {
         $path = explode('.', $name);
-        return self::findParam($_POST, $path, $default);
+        $array = $_POST;
+        if (strlen(self::body()) > 0)
+            $array = array_merge($array, self::json());
+        return self::findParam($array, $path, $default);
     }
 
     /**
@@ -135,7 +138,10 @@ class Request
      */
     public static function json(): array
     {
-        return json_decode(self::body(), true);
+        $decoded = json_decode(self::body(), true);
+        if (json_last_error() === JSON_ERROR_NONE)
+            return $decoded;
+        return [];
     }
 
     /**

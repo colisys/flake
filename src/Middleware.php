@@ -30,7 +30,9 @@ class Middleware
     {
         $request  = new Request();
         $response = new Response();
-        $tguard   = function (Request $request, Response $response) {
+        $request->setParams($_REQUEST);
+
+        $tguard = function (Request $request, Response $response) {
             return function () use ($request, $response) {
                 return [$request, $response];
             };
