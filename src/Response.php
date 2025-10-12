@@ -1,13 +1,12 @@
 <?php
-
 namespace Flake;
 
 use ReflectionClass;
 
 class Response
 {
-    protected int $status      = 200;
-    protected array $headers   = [];
+    protected int $status     = 200;
+    protected array $headers  = [];
     protected bool $streaming = true;
 
     /**
