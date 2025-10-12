@@ -68,4 +68,18 @@ class Response
         header('Content-Type: text/html; charset=utf-8');
         echo $output;
     }
+
+    /**
+     * Redirect to another URL
+     *
+     * @param string $url
+     * @param int $status HTTP status code (optional, default 302)
+     * @return void
+     */
+    public function redirect(string $url, int $status = 302): void
+    {
+        http_response_code($status);
+        header("Location: {$url}");
+        exit; // Stop further execution
+    }
 }
