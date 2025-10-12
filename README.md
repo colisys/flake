@@ -102,7 +102,7 @@ You can chain multiple middleware just like in Express:
 Middleware::use(function ($req, $res, $next) {
     error_log('Before route');
     $next($req, $res);
-error_log('After route');
+    error_log('After route');
 });
 ```
 
