@@ -89,9 +89,16 @@ class Router
      */
     public static function any($method, $uri, $callback)
     {
-        if (is_callable($callback) === false) {
+        // Support controller class callbacks like [ProductController::class, 'destroy']
+        if (is_array($callback) && count($callback) === 2 && class_exists($callback[0])) {
+            $instance = new $callback[0]();
+            $callback = [$instance, $callback[1]];
+        }
+
+        if (!is_callable($callback)) {
             throw new \InvalidArgumentException('Callback must be callable');
         }
+
         self::$routes[$method][$uri] = $callback;
     }
 
@@ -114,31 +121,28 @@ class Router
 
         // Ensure method exists
         if (isset($routes[$method])) {
-            // Check if simple route exists
-            if (array_key_exists($uri, $routes[$method])) {
-                if (
-                    isset($routes[$method]) &&
-                    array_key_exists($uri, $routes[$method]) &&
-                    is_callable($routes[$method][$uri])
-                ) {
-                    $callback = $routes[$method][$uri];
-                }
+            // Check if exact route exists
+            if (array_key_exists($uri, $routes[$method]) && is_callable($routes[$method][$uri])) {
+                $callback = $routes[$method][$uri];
             } else {
                 // Check for parameterized routes
                 foreach ($routes[$method] as $route => $cb) {
-                    // separate parameter name and value using regex
-                    preg_match('#:([\w]+)#', $route, $paramNames);
-                    // Convert :param to regex
-                    $route = preg_replace('#:([\w]+)#', '([\w-]+)', $route);
-                    // Check if route matches
-                    if (preg_match("#^{$route}$#", $uri, $matches)) {
+                    // Capture parameter names like :id
+                    preg_match_all('#:([\w]+)#', $route, $paramNames);
+
+                    // Convert route to regex
+                    $routeRegex = preg_replace('#:([\w]+)#', '([\w-]+)', $route);
+
+                    // Match against requested URI
+                    if (preg_match("#^{$routeRegex}$#", $uri, $matches)) {
                         $callback = $cb;
-                        foreach ($paramNames as $index => $name) {
-                            if ($index === 0) {
-                                continue;
+
+                        // Set route parameters in request
+                        foreach ($paramNames[1] as $index => $name) {
+                            // $matches[0] is full match, $matches[1..] are capture groups
+                            if (isset($matches[$index + 1])) {
+                                $request->setParam($name, $matches[$index + 1]);
                             }
-                            // Skip full match
-                            $request->setParam($name, $matches[$index]);
                         }
                         break;
                     }
@@ -146,7 +150,12 @@ class Router
             }
         }
 
-        // Should we support reflective call to support variable number of parameters?
-        call_user_func($callback, $request, $response, ...array_values($request->getParams()));
+        // Call the callback with request, response, and route parameters
+        call_user_func(
+            $callback,
+            $request,
+            $response,
+            ...array_values($request->getParams())
+        );
     }
 }
