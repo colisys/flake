@@ -122,21 +122,25 @@ class Router
                 ) {
                     $callback = $routes[$method][$uri];
                 }
-            }
-            // Check for parameterized routes
-            foreach ($routes[$method] as $route => $cb) {
-                // separate parameter name and value using regex
-                preg_match('#:([\w]+)#', $route, $paramNames);
-                // Convert :param to regex
-                $route = preg_replace('#:([\w]+)#', '([\w-]+)', $route);
-                // Check if route matches
-                if (preg_match("#^{$route}$#", $uri, $matches)) {
-                    $callback = $cb;
-                    foreach($paramNames as $index => $name) {
-                        if ($index === 0) continue; // Skip full match
-                        $request->setParam($name, $matches[$index]);
+            } else {
+                // Check for parameterized routes
+                foreach ($routes[$method] as $route => $cb) {
+                    // separate parameter name and value using regex
+                    preg_match('#:([\w]+)#', $route, $paramNames);
+                    // Convert :param to regex
+                    $route = preg_replace('#:([\w]+)#', '([\w-]+)', $route);
+                    // Check if route matches
+                    if (preg_match("#^{$route}$#", $uri, $matches)) {
+                        $callback = $cb;
+                        foreach ($paramNames as $index => $name) {
+                            if ($index === 0) {
+                                continue;
+                            }
+                            // Skip full match
+                            $request->setParam($name, $matches[$index]);
+                        }
+                        break;
                     }
-                    break;
                 }
             }
         }
