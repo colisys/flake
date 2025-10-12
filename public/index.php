@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../vendor/autoload.php';
 
 use Flake\App;
+use Flake\Events;
 use Flake\Middleware;
 use Flake\Request;
 use Flake\Response;
@@ -117,18 +118,20 @@ Router::delete('/user/:id', function (Request $req, Response $res, $id) {
 
 // 404 route example (optional)
 Router::fallback(function (Request $req, Response $res) {
+    // You can fireup events and do other stuff
+    Events::dispatch("Router.NotFound", new \Exception("Route not found on requested method={$req->method()}, uri={$req->uri()}"));
     $res->status(404)->send('<h1>404 Not Found</h1><p>The route you requested does not exist.</p>');
 });
 
 // Middleware example
-Middleware::use(function (Request $req, Response $res, $next) {
+Middleware::use (function (Request $req, Response $res, $next) {
     // Simple logging middleware
     error_log("Request: " . $req->method() . " " . $req->uri());
     return $next($req, $res);
 });
 
 // CORS middleware
-Middleware::use(function (Request $req, Response $res, $next) {
+Middleware::use (function (Request $req, Response $res, $next) {
     if ($req->method() === 'OPTIONS') {
         // Simple CORS middleware
         $res->header('Access-Control-Allow-Origin', '*');
@@ -139,6 +142,9 @@ Middleware::use(function (Request $req, Response $res, $next) {
     }
     return $next($req, $res);
 });
+
+Events::listen('App.Start', static fn() => error_log('App started'));
+Events::listen('Router.NotFound', static fn(Throwable $th) => error_log('Route not found: ' . $th->getMessage()));
 
 // Start the app
 App::run();

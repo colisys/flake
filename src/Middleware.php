@@ -39,10 +39,13 @@ class Middleware
             };
         };
 
+        $count = 0;
         foreach (self::$middlewares as $middleware) {
+            $count++;
             $tguard = $middleware($request, $response, $tguard);
             // When middleware returns null, stop the middleware stack
             if ($tguard === null) {
+                Events::dispatch('App.Error', new \Exception("Middleware stopped at no.$count middleware."));
                 die();
             }
         }

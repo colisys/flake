@@ -126,7 +126,10 @@ class Router
         $uri      = $request->uri();
         $method   = $request->method();
         $routes   = self::$routes;
-        $callback = self::$fallback ?? fn(Response $response) => $response->status(404)->send('404 Not Found');
+        $callback = self::$fallback ?? function (Request $request, Response $response) {
+            Events::dispatch("Router.NotFound", new \Exception("Route not found on requested method={$request->method()}, uri={$request->uri()}"));
+            $response->status(404)->send('404 Not Found');
+        };
 
         try {
             // Ensure method exists
@@ -240,16 +243,14 @@ class Router
             // Finally, invoke the handler with the prepared arguments
             $handler(...$invokeArgs);
         } catch (\Throwable $th) {
+            Events::dispatch('App.Error', $th);
             if (isset(self::$error) && is_callable(self::$error)) {
                 $errorHandler = self::$error;
                 $errorHandler($request, $response, $th);
             } else {
                 // Default error handling
-                error_log("Error captured, code: " . $th->getCode() . ', message: ' . $th->getMessage() . PHP_EOL .
-                    '== Trace Begin == ' . PHP_EOL . PHP_EOL . $th->getTraceAsString() . PHP_EOL . PHP_EOL . '== Trace End ==');
                 $response->status(500)->send("Internal Server Error");
             }
-            die();
         }
     }
 }
