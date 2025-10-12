@@ -10,7 +10,7 @@ use Flake\App;
 // Home route
 Router::get('/', function (Request $req, Response $res) {
     $output = "
-        <h1>Flake v1.0.0 is running!</h1>
+        <h1>Flake v0.0.1 is running!</h1>
         <p>Welcome to your new PHP microframework inspired by Express.js.</p>
         <ul>
             <li>Try <a href=\"/hello?name=Flake\">/hello?name=Flake</a></li>
