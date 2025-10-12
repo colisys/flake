@@ -147,6 +147,6 @@ class Router
         }
 
         // Should we support reflective call to support variable number of parameters?
-        call_user_func($callback, $request, $response, ...$request->getParams());
+        call_user_func($callback, $request, $response, ...array_values($request->getParams()));
     }
 }
