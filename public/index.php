@@ -90,14 +90,14 @@ Router::fallback(function (Request $req, Response $res) {
 });
 
 // Middleware example
-Middleware::use (function (Request $req, Response $res, $next) {
+Middleware::use(function (Request $req, Response $res, $next) {
     // Simple logging middleware
     error_log("Request: " . $req->method() . " " . $req->uri());
     return $next($req, $res);
 });
 
 // CORS middleware
-Middleware::use (function (Request $req, Response $res, $next) {
+Middleware::use(function (Request $req, Response $res, $next) {
     if ($req->method() === 'OPTIONS') {
         // Simple CORS middleware
         $res->header('Access-Control-Allow-Origin', '*');

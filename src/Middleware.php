@@ -1,4 +1,5 @@
 <?php
+
 namespace Flake;
 
 class Middleware
@@ -13,7 +14,7 @@ class Middleware
      *
      * @param \Closure(Request $request, Response $response, Middleware $next) $middleware
      */
-    public static function use (callable $middleware): void
+    public static function use(callable $middleware): void
     {
         if (! is_callable($middleware)) {
             throw new \Exception("Middleware must be a callable.");
