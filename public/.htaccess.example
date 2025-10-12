@@ -1,0 +1,13 @@
+# .htaccess file to be placed in the /public directory
+
+# 1. Turn on the Rewrite Engine
+RewriteEngine On
+
+# 2. Prevent direct access to non-essential files/folders (optional but good practice)
+# Deny from all
+
+# 3. Rule to redirect all non-existent file/directory requests to index.php
+# This is the front-controller pattern
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [L]
