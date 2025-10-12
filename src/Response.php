@@ -33,6 +33,6 @@ class Response
     {
         $this->status($status)
             ->header('Content-Type', 'application/json')
-            ->send(json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+            ->send(json_encode($data, JSON_UNESCAPED_UNICODE));
     }
 }
