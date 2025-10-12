@@ -1,13 +1,12 @@
 <?php
-
 namespace Flake;
 
 class Response
 {
-    protected int $status = 200;
+    protected int $status    = 200;
     protected array $headers = [];
 
-    function status($code)
+    public function status($code)
     {
         $this->status = $code;
         http_response_code($code);
@@ -30,10 +29,10 @@ class Response
         echo $content;
     }
 
-    public function json(array|object $data, int $status = 200): void
+    public function json(array | object $data, int $status = 200): void
     {
         $this->status($status)
             ->header('Content-Type', 'application/json')
-            ->send(json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+            ->send(json_encode($data, JSON_UNESCAPED_UNICODE));
     }
 }

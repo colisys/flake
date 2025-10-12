@@ -2,3 +2,5 @@
 composer.lock
 public/.htaccess
 .env
+.vscode/
+.DS_Store
