@@ -1,7 +1,7 @@
 # 🧊 Flake
 
 <p align="center">
-<img src="art/logo.png" alt="Lekoi Framework Logo" width="250"/>
+<img src="art/logo.png?v1" alt="Flake Framework Logo" width="250"/>
 </p>
 
 A minimal PHP microframework inspired by Express.js — simple, fast, and easy to extend.
