@@ -2,8 +2,6 @@
 
 namespace Flake;
 
-use ReflectionFunction;
-
 class Router
 {
     /**
@@ -170,13 +168,9 @@ class Router
 
             // Reflect the callback to inject parameters
             if (is_callable($callback)) {
-                $handler = new ReflectionFunction($callback);
+                $handler = new \ReflectionFunction($callback);
             } else if (count($callback) === 2) {
                 $handler = new \ReflectionMethod($callback[0], $callback[1]);
-            }
-
-            if ($handler === null) {
-                throw new \InvalidArgumentException("Handler is not callable, or not found, got " . gettype($callback));
             }
 
             $invokeArgs = [];
@@ -228,13 +222,17 @@ class Router
                 $invokeArgs[$paramName] = $paramValue;
             }
 
+            // If the handler is a non-static method, instantiate the class
+            // and get the closure from the instance
             if ($handler instanceof \ReflectionMethod  && $handler->isStatic() === false) {
+                // TODO: Maybe support constructor injection in the future, or use a DI container
                 $instance = new ($handler->getDeclaringClass()->getName());
                 $handler  = $handler->getClosure($instance);
             } else {
                 $handler = $handler->getClosure();
             }
 
+            // Finally, invoke the handler with the prepared arguments
             $handler(...$invokeArgs);
         } catch (\Throwable $th) {
             if (isset(self::$error) && is_callable(self::$error)) {
