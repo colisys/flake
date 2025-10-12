@@ -126,7 +126,7 @@ class Router
         $uri      = $request->uri();
         $method   = $request->method();
         $routes   = self::$routes;
-        $callback = self::$fallback ?? fn($response) => $response->setStatus(404)->send('404 Not Found');
+        $callback = self::$fallback ?? fn(Response $response) => $response->status(404)->send('404 Not Found');
 
         try {
             // Ensure method exists
