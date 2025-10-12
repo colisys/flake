@@ -1,0 +1,25 @@
+{
+  "name": "iescarro/flake",
+  "description": "A minimal PHP microframework inspired by Express.js",
+  "type": "project",
+  "license": "MIT",
+  "autoload": {
+    "psr-4": {
+      "Flake\\": "src/"
+    }
+  },
+  "authors": [
+    {
+      "name": "Ian",
+      "email": "ian.escarro@gmail.com"
+    }
+  ],
+  "require": {
+    "php": ">=8.0"
+  },
+  "scripts": {
+    "start": [
+      "@php -S localhost:8000 -t public"
+    ]
+  }
+}
