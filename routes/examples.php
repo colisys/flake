@@ -6,7 +6,7 @@ use Flake\Response;
 use Flake\Router;
 
 // Home route
-Router::get('/', function ($req, $res) {
+Router::get('/', function (Request $req, Response $res) {
     $output = "
         <h1>Flake v0.0.1 is running!</h1>
         <p>Welcome to your new PHP microframework inspired by Express.js.</p>
