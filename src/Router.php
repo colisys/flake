@@ -1,5 +1,4 @@
 <?php
-
 namespace Flake;
 
 class Router
@@ -148,20 +147,26 @@ class Router
                 // Check for parameterized routes
                 foreach ($routes[$method] as $route => $cb) {
                     // separate parameter name and value using regex
-                    preg_match('#:([\w]+)#', $route, $paramNames);
+                    preg_match_all('#:([\w]+)?#', $route, $paramNames);
                     // Convert :param to regex
-                    $route = preg_replace('#:([\w]+)#', '([\w-]+)', $route);
+                    $pattern = preg_replace('#:([\w]+)#', '([\w-]+)', $route);
+                    // Check for optional parameters
+                    $pattern2 = preg_replace('#\?\(\[\\\w\-\]\+\)#', '?', $pattern);
                     // Check if route matches
-                    if (preg_match("#^{$route}$#", $uri, $matches)) {
-                        $callback = $cb;
-                        foreach ($paramNames as $index => $name) {
-                            if ($index === 0) {
-                                continue;
+                    if (preg_match("#^{$pattern}$#", $uri, $matches) || preg_match("#^{$pattern2}$#", $uri, $matches2)) {
+                        $matches = array_merge($matches ?? [], $matches2);
+                        if (count($matches) > 0) {
+                            // Remove unnessary element
+                            array_shift($matches);
+                            $paramNames = array_pop($paramNames);
+
+                            $callback = $cb;
+                            foreach ($paramNames as $index => $name) {
+                                $request->setParam($name, $matches[$index] ?? null);
                             }
-                            // Skip full match
-                            $request->setParam($name, $matches[$index]);
+
+                            break;
                         }
-                        break;
                     }
                 }
             }

@@ -92,7 +92,7 @@ Router::post('/user/:id', function (Request $req, Response $res, int $id, string
         'list'          => $req->post('data.list.2'),
         // Optional parameter with default value also works, but it's not a part of the route parameters
         // So the value will always be the default value unless specified in the route or query parameters
-        // Tips: try "/user/:id/anything/:unused"
+        // Tips: try "/user/:id/anything/?:unused"
         'unused'        => $unused,
     ]);
 });
