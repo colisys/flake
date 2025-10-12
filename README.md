@@ -10,13 +10,13 @@ A minimal PHP microframework inspired by Express.js — simple, fast, and easy t
 
 Create a new project using Composer:
 
-```
+```bash
 composer create-project iescarro/flake myapp
 ```
 
 Then start the development server:
 
-```
+```bash
 cd myapp
 composer start
 ```
@@ -39,7 +39,7 @@ myapp/
 
 ## 🧩 Example Routes (public/index.php)
 
-```
+```php
 <?php
 
 require_once(__DIR__ . '/../vendor/autoload.php');
@@ -76,5 +76,45 @@ Router::fallback(function (Request $req, Response $res) {
     $res->status(404)->send('<h1>404 Not Found</h1><p>That route does not exist.</p>');
 });
 
+Middleware::use(function (Request $req, Response $res, $next) {
+    error_log("Request: " . $req->method() . " " . $req->uri());
+    return $next($req, $res);
+});
+
+Middleware::use(function (Request $req, Response $res, $next) {
+    if ($req->method() === 'OPTIONS') {
+        $res->header('Access-Control-Allow-Origin', '*');
+        $res->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+        $res->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+        return $res->status(204)->send('');
+    }
+    return $next($req, $res);
+});
+
 App::run();
 ```
+
+## 🧱 Middleware Example
+
+You can chain multiple middleware just like in Express:
+
+```php
+Middleware::use(function ($req, $res, $next) {
+    error_log('Before route');
+    $next($req, $res);
+error_log('After route');
+});
+```
+
+## 🧪 Development
+
+Run tests or the server with Composer:
+
+```
+composer start
+```
+
+## 📜 License
+
+Licensed under the MIT License.
+Copyright © 2025 FlakePHP
