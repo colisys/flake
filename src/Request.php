@@ -5,6 +5,7 @@ namespace Flake;
 class Request
 {
     protected static array $params = [];
+    public ?\Flake\Session $session = null;
 
     /**
      * Get Parameters
