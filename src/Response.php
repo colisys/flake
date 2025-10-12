@@ -1,13 +1,12 @@
 <?php
 namespace Flake;
 
-use ReflectionClass;
-
 class Response
 {
-    protected int $status     = 200;
-    protected array $headers  = [];
-    protected bool $streaming = true;
+    protected int $status       = 200;
+    protected array $headers    = [];
+    protected bool $streaming   = true;
+    protected bool $isStreaming = false;
 
     /**
      * Set HTTP Status Code
@@ -32,21 +31,137 @@ class Response
     public function header(string $name, string $value): self
     {
         $this->headers[$name] = $value;
+        header("{$name}: {$value}");
         return $this;
     }
 
     /**
-     * Send raw content
+     * Send content
+     *
+     * @param string|\SplFileInfo|\SplFileObject $content
+     */
+    public function send($content): void
+    {
+        if (is_string($content)) {
+            $this->doSend($content);
+            return;
+        }
+
+        if ($content instanceof \SplFileInfo) {
+            if ($this->isStreaming) {
+                throw new \RuntimeException('Cannot send content while streaming');
+            }
+            $content = $content->openFile();
+        }
+
+        if ($content instanceof \SplFileObject) {
+            while ($content->eof() === false) {
+                $data = $content->fread(1024);
+                if ($data === false) {
+                    break;
+                }
+                $this->doSend($data);
+            }
+            unset($content, $data);
+            return;
+        }
+
+        throw new \InvalidArgumentException('Invalid content');
+    }
+
+    /**
+     * Send content
      *
      * @param string $content
      */
-    public function send(string $content): void
+    protected function doSend(string $content): void
     {
-        // Send any accumulated headers
-        foreach ($this->headers as $name => $value) {
-            header("{$name}: {$value}");
+        if (! $this->streaming) {
+            echo $content;
+            return;
         }
+
+        if (! $this->isStreaming) {
+            ob_start();
+            $this->isStreaming = true;
+        }
+
         echo $content;
+        ob_flush();
+    }
+
+    /**
+     * Start streaming
+     */
+    public function stream(): void
+    {
+        $this->streaming = true;
+    }
+
+    /**
+     * End streaming
+     */
+    public function end(): void
+    {
+        if (! $this->isStreaming) {
+            return;
+        }
+
+        ob_end_flush();
+        $this->isStreaming = false;
+    }
+
+    /**
+     * Send file as attachment
+     *
+     * @param string $filename
+     */
+    public function attachment(string $filename): void
+    {
+        $mime     = mime_content_type($filename);
+        $filename = basename($filename);
+        $this->header('Content-Disposition', "attachment; filename=\"{$filename}\"");
+        $this->type($mime);
+    }
+
+    /**
+     * Send file as inline
+     *
+     * @param string $filename
+     */
+    public function download(string $filename): void
+    {
+        $this->header('Content-Disposition', "attachment; filename=\"{$filename}\"");
+    }
+
+    /**
+     * Set Cookie
+     *
+     * @param string $name
+     * @param string $value
+     * @param int $expire
+     * @param string $path
+     * @param string $domain
+     * @param bool $secure
+     * @param bool $httponly
+     */
+    public function cookie(string $name, string $value, int $expire = 0, string $path = '/', string $domain = '', bool $secure = false, bool $httponly = true)
+    {
+        setcookie($name, $value, $expire, $path, $domain, $secure, $httponly);
+    }
+
+    /**
+     * Clear Cookie
+     */
+    public function clearCookie(): void
+    {
+        setcookie(session_name(), '', time() - 3600, '/');
+    }
+
+    public function noCache(): void
+    {
+        $this->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+        $this->header('Pragma', 'no-cache');
     }
 
     /**
@@ -70,6 +185,26 @@ class Response
     }
 
     /**
+     * Send 301 Moved Permanently response
+     *
+     * @param string $url
+     */
+    public function location(string $url): void
+    {
+        header("Location: {$url}");
+    }
+
+    /**
+     * Set Content Type
+     *
+     * @param string $type
+     */
+    public function type(string $type): void
+    {
+        $this->header('Content-Type', $type);
+    }
+
+    /**
      * Send JSON response
      *
      * @param array $data
@@ -80,16 +215,11 @@ class Response
             $this->streaming = false;
 
             if (is_object($data)) {
-                $rmethod = new ReflectionClass($data);
+                $rmethod = new \ReflectionClass($data);
                 if (! $rmethod->implementsInterface(\JsonSerializable::class)) {
                     throw new \InvalidArgumentException('Object must implement JsonSerializable interface');
                 }
                 $data = $data->jsonSerialize();
-            }
-
-            // Send any accumulated headers
-            foreach ($this->headers as $name => $value) {
-                header("{$name}: {$value}");
             }
 
             $this->status($status)
