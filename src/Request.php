@@ -41,12 +41,13 @@ class Request
      *
      * @param string $name
      * @param mixed $default
+     * @param bool $explicit If true, only search in the query parameters ($_GET)
      * @return mixed
      */
-    public static function get(string $name, $default = null): mixed
+    public static function get(string $name, $default = null, bool $explicit = false): mixed
     {
         $path = explode('.', $name);
-        return self::findParam(self::$params, $path, $default);
+        return self::findParam($explicit ? $_GET : self::$params, $path, $default);
     }
 
     /**
@@ -58,10 +59,12 @@ class Request
      */
     public static function post(string $name, $default = null): mixed
     {
-        $path = explode('.', $name);
+        $path  = explode('.', $name);
         $array = $_POST;
-        if (strlen(self::body()) > 0)
+        if (strlen(self::body()) > 0) {
             $array = array_merge($array, self::json());
+        }
+
         return self::findParam($array, $path, $default);
     }
 
@@ -139,8 +142,10 @@ class Request
     public static function json(): array
     {
         $decoded = json_decode(self::body(), true);
-        if (json_last_error() === JSON_ERROR_NONE)
+        if (json_last_error() === JSON_ERROR_NONE) {
             return $decoded;
+        }
+
         return [];
     }
 
