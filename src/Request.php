@@ -122,7 +122,11 @@ class Request
      */
     public static function method(): string
     {
-        return $_SERVER['REQUEST_METHOD'];
+        $realMethod = $_SERVER['REQUEST_METHOD'];
+        if ($realMethod === 'POST' && isset($_POST['_method'])) {
+            $realMethod = strtoupper($_POST['_method']);
+        }
+        return $realMethod;
     }
 
     /**
