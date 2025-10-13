@@ -45,8 +45,9 @@ class Response
      */
     public function render(string $view, array|object $data = []): void
     {
-        $base = dirname(__DIR__); // your framework root (e.g., src/../)
-        $viewPath = $base . '/' . ltrim($view, '/') . '.php';
+        // $base = dirname(__DIR__); // your framework root (e.g., src/../)
+        // $viewPath = $base . '/' . ltrim($view, '/') . '.php';
+        $viewPath = App::path() . '/' . ltrim($view, '/') . '.php';
 
         if (!file_exists($viewPath)) {
             $this->status(404)->send("View not found: {$viewPath}");
