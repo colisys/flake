@@ -114,34 +114,31 @@ class Router
 
     public static function dispatch(Request $request, Response $response): void
     {
-        $uri      = $request->uri();
-        $method   = $request->method();
-        $routes   = self::$routes;
-        $callback = self::$fallback ?? fn($request, $response) => $response->setStatus(404)->send('404 Not Found');
+        $uri    = $request->uri();
+        $method = $request->method();
+        $routes = self::$routes;
 
-        // Ensure method exists
+        // Default 404 fallback (Express-style)
+        $callback = self::$fallback ?? function ($req, $res) {
+            $res->status(404)->send("Cannot " . $req->method() . " " . $req->uri());
+        };
+
+        // Match route
         if (isset($routes[$method])) {
-            // Check if exact route exists
-            if (array_key_exists($uri, $routes[$method]) && is_callable($routes[$method][$uri])) {
+            // Exact match
+            if (isset($routes[$method][$uri]) && is_callable($routes[$method][$uri])) {
                 $callback = $routes[$method][$uri];
             } else {
                 // Check for parameterized routes
                 foreach ($routes[$method] as $route => $cb) {
-                    // Capture parameter names like :id
                     preg_match_all('#:([\w]+)#', $route, $paramNames);
-
-                    // Convert route to regex
                     $routeRegex = preg_replace('#:([\w]+)#', '([\w-]+)', $route);
 
-                    // Match against requested URI
                     if (preg_match("#^{$routeRegex}$#", $uri, $matches)) {
                         $callback = $cb;
-
-                        // Set route parameters in request
-                        foreach ($paramNames[1] as $index => $name) {
-                            // $matches[0] is full match, $matches[1..] are capture groups
-                            if (isset($matches[$index + 1])) {
-                                $request->setParam($name, $matches[$index + 1]);
+                        foreach ($paramNames[1] as $i => $name) {
+                            if (isset($matches[$i + 1])) {
+                                $request->setParam($name, $matches[$i + 1]);
                             }
                         }
                         break;
@@ -150,12 +147,6 @@ class Router
             }
         }
 
-        // Call the callback with request, response, and route parameters
-        call_user_func(
-            $callback,
-            $request,
-            $response,
-            ...array_values($request->getParams())
-        );
+        call_user_func($callback, $request, $response, ...array_values($request->getParams()));
     }
 }
