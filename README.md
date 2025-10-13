@@ -1,120 +1,83 @@
-# 🧊 Flake
-
-<p align="center">
-<img src="art/logo.png?v1" alt="Flake Framework Logo" width="250"/>
-</p>
-
-A minimal PHP microframework inspired by Express.js — simple, fast, and easy to extend.
+🧊 Flake
+<p align="center"> <img src="art/logo.png?v1" alt="Flake Framework Logo" width="240"> </p> <p align="center"> <strong>A minimal PHP microframework inspired by Express.js — simple, fast, and easy to extend.</strong> </p>
 
 ## 🚀 Installation
 
-Create a new project using Composer:
+Before you start, make sure you have PHP ≥ 8.1 and Composer installed.
 
 ```bash
-composer create-project iescarro/flake myapp
-```
-
-Then start the development server:
-
-```bash
+mkdir myapp
 cd myapp
-composer start
+composer init
+composer require iescarro/flake
 ```
 
-Visit: http://localhost:8000
+## 🧩 Quick Start
 
-## 📁 Directory Structure
-
-```
-myapp/
-├── composer.json
-├── public/
-│ └── index.php
-└── src/
-├── App.php
-├── Router.php
-├── Request.php
-└── Response.php
-```
-
-## 🧩 Example Routes (public/index.php)
+Create an index.php file:
 
 ```php
 <?php
+require __DIR__ . '/vendor/autoload.php';
 
-require_once(__DIR__ . '/../vendor/autoload.php');
-
-use Flake\Request;
-use Flake\Response;
 use Flake\Router;
 use Flake\App;
 
-Router::get('/', function (Request $req, Response $res) {
-    $res->status(200)->send("
-        <h1>Flake v1.0.0</h1>
-        <p>Welcome to your minimal PHP microframework!</p>
-        <ul>
-            <li><a href=\"/hello?name=Flake\">/hello</a></li>
-            <li><a href=\"/json\">/json</a></li>
-        </ul>
-    ");
-});
-
-Router::get('/hello', function (Request $req, Response $res) {
-    $name = $req->get('name', 'World');
-    $res->send("Hello, {$name}!");
-});
-
-Router::get('/json', function (Request $req, Response $res) {
-    $res->json([
-        'message' => 'Welcome to Flake!',
-        'version' => '0.0.1'
-    ]);
-});
-
-Router::fallback(function (Request $req, Response $res) {
-    $res->status(404)->send('<h1>404 Not Found</h1><p>That route does not exist.</p>');
-});
-
-Middleware::use(function (Request $req, Response $res, $next) {
-    error_log("Request: " . $req->method() . " " . $req->uri());
-    return $next($req, $res);
-});
-
-Middleware::use(function (Request $req, Response $res, $next) {
-    if ($req->method() === 'OPTIONS') {
-        $res->header('Access-Control-Allow-Origin', '*');
-        $res->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-        $res->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-        return $res->status(204)->send('');
-    }
-    return $next($req, $res);
+Router::get('/', function ($req, $res) {
+    $res->send('Hello, world!');
 });
 
 App::run();
 ```
 
-## 🧱 Middleware Example
+Then start the local server:
 
-You can chain multiple middleware just like in Express:
+```bash
+php -S localhost:8000
+```
+
+Open your browser at 👉 http://localhost:8000
+
+You should see “Hello, world!”
+
+## ⚙️ Features
+
+* 🚦 Express-style routing — Simple Router::get(), Router::post(), etc.
+* 💡 Minimal core — Focused on speed, readability, and flexibility.
+* 🧱 Extensible — Add your own middleware, handlers, or modules.
+* 🧰 No configuration required — Works out of the box.
+
+## 🧠 Example Routes
 
 ```php
-Middleware::use(function ($req, $res, $next) {
-    error_log('Before route');
-    $next($req, $res);
-    error_log('After route');
+Router::get('/hello/:name', function ($req, $res) {
+    $name = $req->params['name'] ?? 'Guest';
+    $res->send("Hello, $name!");
+});
+
+Router::post('/data', function ($req, $res) {
+    $res->json(['received' => $req->body]);
 });
 ```
 
-## 🧪 Development
+## 📚 Learn More
 
-Run tests or the server with Composer:
+Visit the [Wiki → Home](https://github.com/iescarro/flake/wiki) for deeper examples.
+* Routing and middleware
+* JSON responses
+* Request and response objects
+* Error handling and custom middleware
 
-```
-composer start
-```
+## 🧑‍💻 Contributing
+
+Contributions, issues, and feature requests are welcome!
+
+Feel free to open a discussion or pull request
+.
 
 ## 📜 License
 
-Licensed under the MIT License.
+Released under the MIT License
+
 Copyright © 2025 FlakePHP
+.
