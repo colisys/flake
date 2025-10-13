@@ -1,38 +1,3 @@
-<?php
-
-use Flake\Request;
-use Flake\Response;
-use Flake\Router;
-
-// Home route
-Router::get('/', function ($req, $res) {
-    $output = "
-        <h1>Flake v0.0.1 is running!</h1>
-        <p>Welcome to your new PHP microframework inspired by Express.js.</p>
-        <ul>
-            <li>Try <a href=\"/hello?name=Flake\">/hello?name=Flake</a></li>
-            <li>Try <a href=\"/json\">/json</a></li>
-            <li>Try a 404: <a href=\"/unknown\">/unknown</a></li>
-        </ul>
-    ";
-    $res->status(200)->send($output);
-});
-
-// Simple text route
-Router::get('/hello', function (Request $req, Response $res) {
-    $name = $req->get('name', 'World');
-    $res->send("Hello, {$name}!");
-});
-
-// JSON route
-Router::get('/json', function (Request $req, Response $res) {
-    $res->json([
-        'message'   => 'Welcome to Flake!',
-        'version'   => '1.0.0',
-        'timestamp' => time(),
-    ]);
-});
-
 // Get route with parameter
 Router::get('/user/:id', function (Request $req, Response $res, $id) {
     // All route parameters will injected as function arguments
