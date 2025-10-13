@@ -3,9 +3,9 @@
 require_once __DIR__ . '/../vendor/autoload.php';
 
 use Flake\App;
-
-require __DIR__ . '/../routes/examples.php';
-require __DIR__ . '/../middlewares/examples.php';
+use Flake\Router;
+use Flake\Request;
+use Flake\Response;
 
 Router::get('/', function ($req, $res) {
     $output = "
