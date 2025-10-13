@@ -1,7 +1,7 @@
 {
   "name": "iescarro/flake",
   "description": "A minimal PHP microframework inspired by Express.js",
-  "type": "project",
+  "type": "library",
   "license": "MIT",
   "autoload": {
     "psr-4": {
