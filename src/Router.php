@@ -160,11 +160,13 @@ class Router
                 // Check for parameterized routes
                 foreach ($routes[$method] as $route => $cb) {
                     // separate parameter name and value using regex
-                    preg_match_all('#:([\w]+)?#', $route, $paramNames);
+                    preg_match_all('#:([\w]+)(?:/)?#', $route, $paramNames);
                     // Convert :param to regex
                     $pattern = preg_replace('#:([\w]+)#', '([\w-]+)', $route);
                     // Check for optional parameters, only last one is allowed
                     $pattern2 = preg_replace('#\?\(\[\\\w\-\]\+\)$#', '?', $pattern);
+                    // Need clean pattern for optional parameters
+                    $pattern = preg_replace('#\?#', '', $pattern);
                     // Check if route matches
                     if (preg_match("#^{$pattern}$#", $uri, $matches) || preg_match("#^{$pattern2}$#", $uri, $matches2)) {
                         $matches = array_merge($matches ?? [], $matches2);
