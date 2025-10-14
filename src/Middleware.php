@@ -1,5 +1,4 @@
 <?php
-
 namespace Flake;
 
 class Middleware
@@ -14,7 +13,7 @@ class Middleware
      *
      * @param \Closure(Request $request, Response $response, Middleware $next) $middleware
      */
-    public static function use(callable $middleware): void
+    public static function use (callable $middleware): void
     {
         if (! is_callable($middleware)) {
             throw new \Exception("Middleware must be a callable.");
@@ -44,6 +43,7 @@ class Middleware
             // Run the fully composed chain
             return $next($request, $response);
         } catch (\Throwable $th) {
+            // TODO: Should we emit an error event here?
             error_log("Middleware Error: " . $th->getMessage());
             $response->status(500)->send("Internal Server Error");
             die();
