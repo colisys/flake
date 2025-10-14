@@ -125,6 +125,71 @@ class Router
     }
 
     /**
+     * Build the router and get proper handler
+     * 
+     * @param Request $request
+     * @param Response $response
+     * @return \Closure(Request $request, Response $response)
+     */
+    public static function buildRouter(Request $request, Response $response)
+    {
+        $uri    = $request->uri();
+        $method = $request->method();
+        $routes = self::$routes;
+
+        // Default 404 fallback (Express-style)
+        $handler = self::$fallback ?? function ($req, $res) {
+            $res->status(404)->send("Cannot " . $req->method() . " " . $req->uri());
+        };
+
+        // Ensure method exists
+        if (! isset($routes[$method])) {
+            throw new \InvalidArgumentException("Method {$method} not supported");
+        }
+
+        // Check if simple route exists
+        if (array_key_exists($uri, $routes[$method])) {
+            if (
+                isset($routes[$method]) &&
+                is_callable($routes[$method][$uri]) ||
+                count($routes[$method][$uri]) === 2
+            ) {
+                $handler = $routes[$method][$uri];
+            }
+        } else {
+            // Check for parameterized routes
+            foreach ($routes[$method] as $route => $cb) {
+                // separate parameter name and value using regex
+                preg_match_all('#:([\w]+)(?:/)?#', $route, $paramNames);
+                // Convert :param to regex
+                $pattern = preg_replace('#:([\w]+)#', '([\w-]+)', $route);
+                // Check for optional parameters, only last one is allowed
+                $pattern2 = preg_replace('#\?\(\[\\\w\-\]\+\)$#', '?', $pattern);
+                // Need clean pattern for optional parameters
+                $pattern = preg_replace('#\?#', '', $pattern);
+                // Check if route matches
+                if (preg_match("#^{$pattern}$#", $uri, $matches) || preg_match("#^{$pattern2}$#", $uri, $matches2)) {
+                    $matches = array_merge($matches ?? [], $matches2 ?? []);
+                    if (count($matches) > 0) {
+                        // Remove unnessary element
+                        array_shift($matches);
+                        $paramNames = array_pop($paramNames);
+
+                        $handler = $cb;
+                        foreach ($paramNames as $index => $name) {
+                            $request->setParam($name, $matches[$index] ?? null);
+                        }
+
+                        break;
+                    }
+                }
+            }
+        }
+
+        return $handler;
+    }
+
+    /**
      * Dispatch the request to the appropriate route
      *
      * @param Request $request
@@ -132,59 +197,8 @@ class Router
      */
     public static function dispatch(Request $request, Response $response): void
     {
-        $uri    = $request->uri();
-        $method = $request->method();
-        $routes = self::$routes;
-
-        // Default 404 fallback (Express-style)
-        $callback = self::$fallback ?? function ($req, $res) {
-            $res->status(404)->send("Cannot " . $req->method() . " " . $req->uri());
-        };
-
         try {
-            // Ensure method exists
-            if (! isset($routes[$method])) {
-                throw new \InvalidArgumentException("Method {$method} not supported");
-            }
-
-            // Check if simple route exists
-            if (array_key_exists($uri, $routes[$method])) {
-                if (
-                    isset($routes[$method]) &&
-                    is_callable($routes[$method][$uri]) ||
-                    count($routes[$method][$uri]) === 2
-                ) {
-                    $callback = $routes[$method][$uri];
-                }
-            } else {
-                // Check for parameterized routes
-                foreach ($routes[$method] as $route => $cb) {
-                    // separate parameter name and value using regex
-                    preg_match_all('#:([\w]+)(?:/)?#', $route, $paramNames);
-                    // Convert :param to regex
-                    $pattern = preg_replace('#:([\w]+)#', '([\w-]+)', $route);
-                    // Check for optional parameters, only last one is allowed
-                    $pattern2 = preg_replace('#\?\(\[\\\w\-\]\+\)$#', '?', $pattern);
-                    // Need clean pattern for optional parameters
-                    $pattern = preg_replace('#\?#', '', $pattern);
-                    // Check if route matches
-                    if (preg_match("#^{$pattern}$#", $uri, $matches) || preg_match("#^{$pattern2}$#", $uri, $matches2)) {
-                        $matches = array_merge($matches ?? [], $matches2);
-                        if (count($matches) > 0) {
-                            // Remove unnessary element
-                            array_shift($matches);
-                            $paramNames = array_pop($paramNames);
-
-                            $callback = $cb;
-                            foreach ($paramNames as $index => $name) {
-                                $request->setParam($name, $matches[$index] ?? null);
-                            }
-
-                            break;
-                        }
-                    }
-                }
-            }
+            $callback = self::buildRouter($request, $response);
 
             // Reflect the callback to inject parameters
             if (is_callable($callback)) {
@@ -197,7 +211,7 @@ class Router
             // Also we need to inject Request and Response by type
             // What about callbacks with no type hint? We may need to handle them differently here
             $invokeArgs = match (self::checkCallback($handler)) {
-                self::CALLBACK_WITH_NO_TYPE_HINT => self::defaultNoTypeHintCallback($handler, $request, $response),
+                self::CALLBACK_WITH_NO_TYPE_HINT => array_merge([$request, $response], self::defaultNoTypeHintCallback($handler, $request, $response)),
                 default                          => self::defaultTypeHintCallback($handler, $request, $response),
             };
 
@@ -236,7 +250,7 @@ class Router
      */
     protected static function defaultTypeHintCallback(\ReflectionFunction  | \ReflectionMethod $handler, Request $request, Response $response): array
     {
-        $invokeArgs = [];
+        $invokeArgs = self::defaultNoTypeHintCallback($handler, $request, $response);
         foreach ($handler->getParameters() as $rparam) {
             $paramName = $rparam->getName();
 
@@ -265,7 +279,7 @@ class Router
 
     protected static function defaultNoTypeHintCallback(\ReflectionMethod  | \ReflectionFunction $handler, Request $request, Response $response): array
     {
-        $invokeArgs = [$request, $response];
+        $invokeArgs = [];
         foreach ($handler->getParameters() as $index => $rparam) {
             $paramName = $rparam->getName();
 
@@ -296,6 +310,7 @@ class Router
                 }
             }
 
+            $request->setParam($paramName, $paramValue);
             $invokeArgs[$paramName] = $paramValue;
         }
         return $invokeArgs;
@@ -316,7 +331,7 @@ class Router
 
         return match (true) {
             $typeHint && ! $mixed => self::CALLBACK_WITH_TYPE_HINT,
-            $typeHint && $mixed  => self::CALLBACK_WITH_MIXED_TYPE_HINT,
+            $mixed               => self::CALLBACK_WITH_MIXED_TYPE_HINT,
             default              => self::CALLBACK_WITH_NO_TYPE_HINT,
         };
     }
