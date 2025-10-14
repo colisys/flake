@@ -26,12 +26,8 @@ class Middleware
      *
      * @return array{0: Request, 1: Response}
      */
-    public static function run(): array
+    public static function run(Request $request, Response $response): array
     {
-        $request  = new Request();
-        $response = new Response();
-        $request->setParams($_REQUEST);
-
         // Build the middleware chain from last to first
         $next = fn($req, $res) => [$req, $res];
 

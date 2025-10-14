@@ -1,5 +1,4 @@
 <?php
-
 namespace Flake;
 
 class App
@@ -7,11 +6,18 @@ class App
     public static function run()
     {
         // Ensure initialized (lazy-init pattern)
-        if (!self::$basePath) {
+        if (! self::$basePath) {
             self::init(getcwd());
         }
-        [$request, $response] = Middleware::run();
-        Router::dispatch($request, $response);
+
+        $request  = new Request();
+        $response = new Response();
+        // TODO: should we sanitize the request?
+        $request->setParams($_REQUEST);
+
+        $router = Router::buildRouter($request, $response);
+        Middleware::run($request, $response);
+        Router::dispatch($request, $response, $router);
     }
 
     protected static string $basePath = '';
@@ -24,7 +30,10 @@ class App
 
     public static function path(?string $path = null): string
     {
-        if ($path) self::$basePath = rtrim($path, '/');
+        if ($path) {
+            self::$basePath = rtrim($path, '/');
+        }
+
         return self::$basePath;
     }
 }

@@ -38,15 +38,10 @@ class Response
     /**
      * Send content
      *
-     * @param string|\SplFileInfo|\SplFileObject $content
+     * @param mixed $content
      */
     public function send($content): void
     {
-        if (is_string($content)) {
-            $this->doSend($content);
-            return;
-        }
-
         if ($content instanceof \SplFileInfo) {
             if ($this->isStreaming) {
                 throw new \RuntimeException('Cannot send content while streaming');
@@ -66,7 +61,13 @@ class Response
             return;
         }
 
-        throw new \InvalidArgumentException('Invalid content');
+        if (is_array($content) || is_object($content)) {
+            $this->json($content);
+            return;
+        }
+
+        $this->doSend($content);
+        return;
     }
 
     /**

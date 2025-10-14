@@ -194,12 +194,11 @@ class Router
      *
      * @param Request $request
      * @param Response $response
+     * @param \Closure(...$args)|array{0: class-string, 1: string} $callback
      */
-    public static function dispatch(Request $request, Response $response): void
+    public static function dispatch(Request $request, Response $response, $callback): void
     {
         try {
-            $callback = self::buildRouter($request, $response);
-
             // Reflect the callback to inject parameters
             if (is_callable($callback)) {
                 $handler = new \ReflectionFunction($callback);

@@ -3,15 +3,14 @@ namespace Flake;
 
 class Request
 {
-    protected static array $params    = [];
-    public ?\Flake\Session $session = null;
-
+    protected static array $params = [];
+    public ?Session $session       = null;
     /**
      * Get Parameters
      *
      * @return array
      */
-    public static function getParams() : array
+    public static function getParams(): array
     {
         return self::$params;
     }
