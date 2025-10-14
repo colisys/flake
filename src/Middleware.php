@@ -28,21 +28,35 @@ class Middleware
      */
     public static function run(Request $request, Response $response): array
     {
-        // Build the middleware chain from last to first
-        $next = fn($req, $res) => [$req, $res];
+        // When middleware returns not as [$request, $response], the following code will raise an error
+        // // Build the middleware chain from last to first
+        // $next = fn($req, $res) => [$req, $res];
 
+        // foreach (array_reverse(self::$middlewares) as $middleware) {
+        //     $next = fn($req, $res) => $middleware($req, $res, $next);
+        // }
+
+        // // Run the fully composed chain
+        // return $next($request, $response);
+
+        $tguard = function (Request $request, Response $response) {
+            return function () use ($request, $response) {
+                return [$request, $response];
+            };
+        };
+
+        $count = 0;
         foreach (array_reverse(self::$middlewares) as $middleware) {
-            $next = fn($req, $res) => $middleware($req, $res, $next);
+            $count++;
+            $tguard = $middleware($request, $response, $tguard);
+            // When middleware returns null, stop the middleware stack
+            if ($tguard === null) {
+                // TODO: should we dispatch an event?
+                // Events::dispatch('App.Error', new \Exception("Middleware stopped at no.$count middleware."));
+                die();
+            }
         }
 
-        try {
-            // Run the fully composed chain
-            return $next($request, $response);
-        } catch (\Throwable $th) {
-            // TODO: Should we emit an error event here?
-            error_log("Middleware Error: " . $th->getMessage());
-            $response->status(500)->send("Internal Server Error");
-            die();
-        }
+        return [$request, $response];
     }
 }

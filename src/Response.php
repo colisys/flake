@@ -7,6 +7,7 @@ class Response
     protected array $headers    = [];
     protected bool $streaming   = true;
     protected bool $isStreaming = false;
+    public bool $sent           = false;
 
     /**
      * Set HTTP Status Code
@@ -67,6 +68,7 @@ class Response
         }
 
         $this->doSend($content);
+        $this->sent = true;
         return;
     }
 
@@ -217,6 +219,7 @@ class Response
             $this->status($status)
                 ->header('Content-Type', 'application/json')
                 ->send(json_encode($data, JSON_UNESCAPED_UNICODE));
+            $this->sent = true;
         }
     }
     /**

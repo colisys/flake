@@ -142,14 +142,12 @@ class Router
      * @param Response $response
      * @return \Closure(Request $request, Response $response)
      * @throws NotSupportHTTPMethodException
-     * @throws RouterNotFoundException
      */
     public static function buildRouter(Request $request, Response $response)
     {
         $uri     = $request->uri();
         $method  = $request->method();
         $routes  = self::$routes;
-        $founded = false;
 
         // Default 404 fallback (Express-style)
         $handler = self::$fallback ?? function ($req, $res) {
@@ -169,7 +167,6 @@ class Router
                 count($routes[$method][$uri]) === 2
             ) {
                 $handler = $routes[$method][$uri];
-                $founded = true;
             }
         } else {
             // Check for parameterized routes
@@ -196,14 +193,9 @@ class Router
                         }
 
                         break;
-                        $founded = true;
                     }
                 }
             }
-        }
-
-        if (! $founded) {
-            throw new RouterNotFoundException("No route found for {$method} {$uri}");
         }
 
         return $handler;
