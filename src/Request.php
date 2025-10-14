@@ -1,10 +1,9 @@
 <?php
-
 namespace Flake;
 
 class Request
 {
-    protected static array $params = [];
+    protected static array $params    = [];
     public ?\Flake\Session $session = null;
 
     /**
@@ -12,9 +11,21 @@ class Request
      *
      * @return array
      */
-    public static function getParams(): array
+    public static function getParams() : array
     {
         return self::$params;
+    }
+
+    /**
+     * Get Route Parameter
+     *
+     * @param string $name
+     * @param mixed $default
+     * @return mixed
+     */
+    public static function getParam(string $name, $default = null): mixed
+    {
+        return self::$params[$name] ?? $default;
     }
 
     /**
@@ -39,17 +50,27 @@ class Request
     }
 
     /**
+     * Check if parameter exists
+     *
+     * @param string $name
+     * @return bool
+     */
+    public static function has(string $name): bool
+    {
+        return self::findParam(self::$params, explode('.', $name), null) !== null;
+    }
+
+    /**
      * Get Parameter, support dot notation
      *
      * @param string $name
      * @param mixed $default
-     * @param bool $explicit If true, only search in the query parameters ($_GET)
+     * @param bool $explicit If true, only search in the query parameters ($_GET), otherwise search in $_REQUEST and raw body JSON
      * @return mixed
      */
     public static function get(string $name, $default = null, bool $explicit = false): mixed
     {
-        $path = explode('.', $name);
-        return self::findParam($explicit ? $_GET : self::$params, $path, $default);
+        return self::findParam($explicit ? $_GET : self::$params, explode('.', $name), $default);
     }
 
     /**
@@ -57,13 +78,14 @@ class Request
      *
      * @param string $name
      * @param mixed $default
+     * @param bool $explicit If true, only search in the form parameters ($_POST), otherwise search in both $_POST and raw body JSON
      * @return mixed
      */
-    public static function post(string $name, $default = null): mixed
+    public static function post(string $name, $default = null, bool $explicit = false): mixed
     {
         $path  = explode('.', $name);
         $array = $_POST;
-        if (strlen(self::body()) > 0) {
+        if (strlen(self::body()) > 0 && ! $explicit) {
             $array = array_merge($array, self::json());
         }
 
@@ -79,8 +101,7 @@ class Request
      */
     public static function cookie(string $name, $default = null): mixed
     {
-        $path = explode('.', $name);
-        return self::findParam($_COOKIE, $path, $default);
+        return self::findParam($_COOKIE, explode('.', $name), $default);
     }
 
     /**
