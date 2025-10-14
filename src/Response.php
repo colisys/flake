@@ -197,6 +197,8 @@ class Response
      * Send JSON response
      *
      * @param array $data
+     * @param int $status
+     * @throws \InvalidArgumentException
      */
     public function json(array | object $data, int $status = 200): void
     {
@@ -227,6 +229,9 @@ class Response
     {
         // $base = dirname(__DIR__); // your framework root (e.g., src/../)
         // $viewPath = $base . '/' . ltrim($view, '/') . '.php';
+
+        // FIXME: rendering a php file is extremely insecure.
+        // Use a template engine instead in the future maybe?
         $viewPath = App::path() . '/' . ltrim($view, '/') . '.php';
 
         if (! file_exists($viewPath)) {

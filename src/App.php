@@ -1,6 +1,8 @@
 <?php
 namespace Flake;
 
+use Flake\Exceptions\RouterNotFoundException;
+
 class App
 {
     public static function run()
@@ -15,9 +17,16 @@ class App
         // TODO: should we sanitize the request?
         $request->setParams($_REQUEST);
 
-        $router = Router::buildRouter($request, $response);
-        Middleware::run($request, $response);
-        Router::dispatch($request, $response, $router);
+        try {
+            $router = Router::buildRouter($request, $response);
+            Middleware::run($request, $response);
+            Router::dispatch($request, $response, $router);
+        } catch (\Throwable $th) {
+            if ($th instanceof RouterNotFoundException || $th instanceof RouterNotFoundException) {
+                // No route found, try middleware?
+                Middleware::run($request, $response);
+            }
+        }
     }
 
     protected static string $basePath = '';

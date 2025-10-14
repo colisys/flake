@@ -1,6 +1,10 @@
 <?php
 namespace Flake;
 
+use Flake\Exceptions\NotSupportHTTPMethodException;
+use Flake\Exceptions\RouterDispatchException;
+use Flake\Exceptions\RouterNotFoundException;
+
 class Router
 {
     private const CALLBACK_WITH_TYPE_HINT       = 1;
@@ -25,11 +29,12 @@ class Router
     public function __construct()
     {
         $this->routes = [
-            'GET'    => [],
-            'POST'   => [],
-            'PUT'    => [],
-            'DELETE' => [],
-            'PATCH'  => [],
+            'GET'     => [],
+            'POST'    => [],
+            'PUT'     => [],
+            'DELETE'  => [],
+            'PATCH'   => [],
+            'OPTIONS' => [],
         ];
     }
 
@@ -38,6 +43,7 @@ class Router
      *
      * @param string $uri
      * @param \Closure(Request $request, Response $response, ...$params)|array{0: class-string, 1: string} $callback
+     * @throws \InvalidArgumentException
      */
     public static function get($uri, $callback)
     {
@@ -49,6 +55,7 @@ class Router
      *
      * @param string $uri
      * @param \Closure(Request $request, Response $response, ...$params)|array{0: class-string, 1: string} $callback
+     * @throws \InvalidArgumentException
      */
     public static function post($uri, $callback)
     {
@@ -60,6 +67,7 @@ class Router
      *
      * @param string $uri
      * @param \Closure(Request $request, Response $response, ...$params)|array{0: class-string, 1: string} $callback
+     * @throws \InvalidArgumentException
      */
     public static function put($uri, $callback)
     {
@@ -71,6 +79,7 @@ class Router
      *
      * @param string $uri
      * @param \Closure(Request $request, Response $response, ...$params)|array{0: class-string, 1: string} $callback
+     * @throws \InvalidArgumentException
      */
     public static function patch($uri, $callback)
     {
@@ -82,6 +91,7 @@ class Router
      *
      * @param string $uri
      * @param \Closure(Request $request, Response $response, ...$params)|array{0: class-string, 1: string} $callback
+     * @throws \InvalidArgumentException
      */
     public static function delete($uri, $callback)
     {
@@ -94,6 +104,7 @@ class Router
      * @param string|array{"GET": 0, "POST": 1, "PUT": 2, "PATCH": 3, "DELETE": 4} $method
      * @param string $uri
      * @param \Closure(Request $request, Response $response, ...$params)|array{0: class-string, 1: string} $callback
+     * @throws \InvalidArgumentException
      */
     public static function any($method, $uri, $callback)
     {
@@ -126,16 +137,19 @@ class Router
 
     /**
      * Build the router and get proper handler
-     * 
+     *
      * @param Request $request
      * @param Response $response
      * @return \Closure(Request $request, Response $response)
+     * @throws NotSupportHTTPMethodException
+     * @throws RouterNotFoundException
      */
     public static function buildRouter(Request $request, Response $response)
     {
-        $uri    = $request->uri();
-        $method = $request->method();
-        $routes = self::$routes;
+        $uri     = $request->uri();
+        $method  = $request->method();
+        $routes  = self::$routes;
+        $founded = false;
 
         // Default 404 fallback (Express-style)
         $handler = self::$fallback ?? function ($req, $res) {
@@ -144,7 +158,7 @@ class Router
 
         // Ensure method exists
         if (! isset($routes[$method])) {
-            throw new \InvalidArgumentException("Method {$method} not supported");
+            throw new NotSupportHTTPMethodException("Method {$method} not supported");
         }
 
         // Check if simple route exists
@@ -155,6 +169,7 @@ class Router
                 count($routes[$method][$uri]) === 2
             ) {
                 $handler = $routes[$method][$uri];
+                $founded = true;
             }
         } else {
             // Check for parameterized routes
@@ -181,9 +196,14 @@ class Router
                         }
 
                         break;
+                        $founded = true;
                     }
                 }
             }
+        }
+
+        if (! $founded) {
+            throw new RouterNotFoundException("No route found for {$method} {$uri}");
         }
 
         return $handler;
@@ -195,6 +215,7 @@ class Router
      * @param Request $request
      * @param Response $response
      * @param \Closure(...$args)|array{0: class-string, 1: string} $callback
+     * @throws RouterDispatchException
      */
     public static function dispatch(Request $request, Response $response, $callback): void
     {
@@ -227,14 +248,17 @@ class Router
             // Finally, invoke the handler with the prepared arguments
             $handler(...$invokeArgs);
         } catch (\Throwable $th) {
+            if ($th instanceof \ReflectionException) {
+                error_log($th);
+            }
+
             // TODO: need to dispatch an event?
             if (isset(self::$error) && is_callable(self::$error)) {
                 $errorHandler = self::$error;
                 $errorHandler($request, $response, $th);
             } else {
-                // Default error handling, need log to console
-                error_log($th);
                 $response->status(500)->send("Internal Server Error");
+                throw new RouterDispatchException($th->getMessage(), $th->getCode(), $th);
             }
         }
     }
@@ -246,6 +270,8 @@ class Router
      * @param Request $request
      * @param Response $response
      * @return array
+     * @throws \InvalidArgumentException
+     * @throws \ReflectionException
      */
     protected static function defaultTypeHintCallback(\ReflectionFunction  | \ReflectionMethod $handler, Request $request, Response $response): array
     {
@@ -276,6 +302,16 @@ class Router
         return $invokeArgs;
     }
 
+    /**
+     * Default callback for no type hinting
+     *
+     * @param \ReflectionFunction | \ReflectionMethod $handler
+     * @param Request $request
+     * @param Response $response
+     * @return array
+     * @throws \InvalidArgumentException
+     * @throws \ReflectionException
+     */
     protected static function defaultNoTypeHintCallback(\ReflectionMethod  | \ReflectionFunction $handler, Request $request, Response $response): array
     {
         $invokeArgs = [];
@@ -315,6 +351,12 @@ class Router
         return $invokeArgs;
     }
 
+    /**
+     * Check callback type
+     *
+     * @param \ReflectionMethod | \ReflectionFunction $handler
+     * @return int
+     */
     protected static function checkCallback(\ReflectionMethod  | \ReflectionFunction $handler): int
     {
         $typeHint = false;

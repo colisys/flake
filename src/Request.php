@@ -161,13 +161,18 @@ class Request
     }
 
     /**
+     * @see json_decode()
+     * 
      * Get JSON body
      *
+     * @param bool $associative
+     * @param int $depth
+     * @param int $options
      * @return array
      */
-    public static function json(): array
+    public static function json(bool $associative = true, int $depth = 512, int $options = 0): array
     {
-        $decoded = json_decode(self::body(), true);
+        $decoded = json_decode(self::body(), $associative, $depth, $options);
         if (json_last_error() === JSON_ERROR_NONE) {
             return $decoded;
         }
