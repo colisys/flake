@@ -3,6 +3,10 @@ namespace Flake;
 
 class Router
 {
+    private const CALLBACK_WITH_TYPE_HINT       = 1;
+    private const CALLBACK_WITH_NO_TYPE_HINT    = 2;
+    private const CALLBACK_WITH_MIXED_TYPE_HINT = 3;
+
     /**
      * @var array<string, array<string, \Closure(Request $request, Response $response)|array{0: class-string, 1: string}>>
      */
@@ -187,55 +191,13 @@ class Router
                 $handler = new \ReflectionMethod($callback[0], $callback[1]);
             }
 
-            $invokeArgs = [];
-            foreach ($handler->getParameters() as $rparam) {
-                $paramName = $rparam->getName();
-
-                // Handle Request and Response injection
-                if ($rparam->getType() instanceof \ReflectionNamedType) {
-                    $typeName = $rparam->getType()->getName();
-                    if ($typeName === Request::class) {
-                        $invokeArgs[$paramName] = $request;
-                        continue;
-                    }
-                    if ($typeName === Response::class) {
-                        $invokeArgs[$paramName] = $response;
-                        continue;
-                    }
-
-                    // Validate non-builtin types early
-                    // TODO: Maybe we should walk reading autoloader_classmap to create an DI container and inject them later?
-                    if (! $rparam->getType()->isBuiltin()) {
-                        throw new \InvalidArgumentException("Parameter {$paramName} must be a scalar type");
-                    }
-                }
-
-                // First check route parameters and query/post parameters
-                $paramValue = $request->getParam($paramName) ?? $request->get($paramName);
-
-                // If no value found, handle defaults
-                if ($paramValue === null) {
-                    if ($rparam->isDefaultValueAvailable()) {
-                        // Use parameter's default value from method signature
-                        $paramValue = $rparam->getDefaultValue();
-                    } else if (! $rparam->isOptional()) {
-                        // Required parameter not provided
-                        throw new \InvalidArgumentException("Parameter {$paramName} is required");
-                    } else {
-                        // Optional parameter without default - use type default
-                        $paramValue = match ($rparam->getType()->getName()) {
-                            'int'    => 0,
-                            'float', 'double' => 0.0,
-                            'string' => '',
-                            'bool'   => false,
-                            'array'  => [],
-                            default  => null,
-                        };
-                    }
-                }
-
-                $invokeArgs[$paramName] = $paramValue;
-            }
+            // We walk through the parameters first, since we don't know how many parameters the callback has
+            // Also we need to inject Request and Response by type
+            // What about callbacks with no type hint? We may need to handle them differently here
+            $invokeArgs = match (self::checkCallback($handler)) {
+                self::CALLBACK_WITH_NO_TYPE_HINT => self::defaultNoTypeHintCallback($handler, $request, $response),
+                default                          => self::defaultTypeHintCallback($handler, $request, $response),
+            };
 
             // If the handler is a non-static method, instantiate the class
             // and get the closure from the instance
@@ -251,14 +213,109 @@ class Router
             $handler(...$invokeArgs);
         } catch (\Throwable $th) {
             // TODO: need to dispatch an event?
-            // Events::dispatch('App.Error', $th);
             if (isset(self::$error) && is_callable(self::$error)) {
                 $errorHandler = self::$error;
                 $errorHandler($request, $response, $th);
             } else {
-                // Default error handling
+                // Default error handling, need log to console
+                error_log($th);
                 $response->status(500)->send("Internal Server Error");
             }
         }
+    }
+
+    /**
+     * Default callback for type hinting
+     *
+     * @param \ReflectionFunction | \ReflectionMethod $handler
+     * @param Request $request
+     * @param Response $response
+     * @return array
+     */
+    protected static function defaultTypeHintCallback(\ReflectionFunction  | \ReflectionMethod $handler, Request $request, Response $response): array
+    {
+        $invokeArgs = [];
+        foreach ($handler->getParameters() as $rparam) {
+            $paramName = $rparam->getName();
+
+            // Handle Request and Response injection
+            if ($rparam->getType() instanceof \ReflectionNamedType) {
+                $typeName = $rparam->getType()->getName();
+                if ($typeName === Request::class) {
+                    $invokeArgs[$paramName] = $request;
+                    continue;
+                }
+                if ($typeName === Response::class) {
+                    $invokeArgs[$paramName] = $response;
+                    continue;
+                }
+
+                // Validate non-builtin types early
+                // TODO: Maybe we should walk reading autoloader_classmap to create an DI container and inject them later?
+                // This will simplify the code and make it more flexible
+                if (! $rparam->getType()->isBuiltin()) {
+                    throw new \InvalidArgumentException("Parameter {$paramName} must be a scalar type");
+                }
+            }
+        }
+        return $invokeArgs;
+    }
+
+    protected static function defaultNoTypeHintCallback(\ReflectionMethod  | \ReflectionFunction $handler, Request $request, Response $response): array
+    {
+        $invokeArgs = [$request, $response];
+        foreach ($handler->getParameters() as $index => $rparam) {
+            $paramName = $rparam->getName();
+
+            // First check route parameters and query/post parameters
+            $paramValue = $request->getParam($paramName) ?? $request->get($paramName);
+
+            // If no value found, handle defaults
+            if ($paramValue === null) {
+                if ($rparam->isDefaultValueAvailable()) {
+                    // Use parameter's default value from method signature
+                    $paramValue = $rparam->getDefaultValue();
+                } else if (! $rparam->isOptional()) {
+                    if ($index > 2) {
+                        // Required parameter not provided
+                        throw new \InvalidArgumentException("Parameter {$paramName} is required");
+                    }
+                    continue;
+                } else {
+                    // Optional parameter without default - use type default
+                    $paramValue = match ($rparam->getType()?->getName()) {
+                        'int'    => 0,
+                        'float', 'double' => 0.0,
+                        'string' => '',
+                        'bool'   => false,
+                        'array'  => [],
+                        default  => null,
+                    };
+                }
+            }
+
+            $invokeArgs[$paramName] = $paramValue;
+        }
+        return $invokeArgs;
+    }
+
+    protected static function checkCallback(\ReflectionMethod  | \ReflectionFunction $handler): int
+    {
+        $typeHint = false;
+        $mixed    = false;
+        foreach ($handler->getParameters() as $rparam) {
+            if ($rparam->getType() instanceof \ReflectionNamedType) {
+                $typeHint = true;
+                if (! $rparam->getType()->isBuiltin()) {
+                    $mixed = true;
+                }
+            }
+        }
+
+        return match (true) {
+            $typeHint && ! $mixed => self::CALLBACK_WITH_TYPE_HINT,
+            $typeHint && $mixed  => self::CALLBACK_WITH_MIXED_TYPE_HINT,
+            default              => self::CALLBACK_WITH_NO_TYPE_HINT,
+        };
     }
 }
