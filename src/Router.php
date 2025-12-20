@@ -1,4 +1,5 @@
 <?php
+
 namespace Flake;
 
 use Flake\Exceptions\NotSupportHTTPMethodException;
@@ -111,7 +112,7 @@ class Router
         match (true) {
             is_callable($callback)                    => true,
             (is_array($callback) && count($callback) === 2) &&
-            method_exists($callback[0], $callback[1]) => true,
+                method_exists($callback[0], $callback[1]) => true,
             default                                   => throw new \InvalidArgumentException('Callback must be callable')
         };
 
@@ -215,7 +216,7 @@ class Router
             // Reflect the callback to inject parameters
             if (is_callable($callback)) {
                 $handler = new \ReflectionFunction($callback);
-            } else if (count($callback) === 2) {
+            } elseif (count($callback) === 2) {
                 $handler = new \ReflectionMethod($callback[0], $callback[1]);
             }
 
@@ -223,15 +224,14 @@ class Router
             // Also we need to inject Request and Response by type
             // What about callbacks with no type hint? We may need to handle them differently here
             $invokeArgs = match (self::checkCallback($handler)) {
-                self::CALLBACK_WITH_NO_TYPE_HINT => array_merge([$request, $response], self::defaultNoTypeHintCallback($handler, $request, $response)),
+                self::CALLBACK_WITH_NO_TYPE_HINT => self::defaultNoTypeHintCallback($handler, $request, $response),
                 default                          => self::defaultTypeHintCallback($handler, $request, $response),
             };
 
             // If the handler is a non-static method, instantiate the class
             // and get the closure from the instance
             if ($handler instanceof \ReflectionMethod  && $handler->isStatic() === false) {
-                // TODO: Maybe support constructor injection in the future, by using a DI container
-                $instance = new ($handler->getDeclaringClass()->getName());
+                $instance = make($handler->getDeclaringClass()->getName());
                 $handler  = $handler->getClosure($instance);
             } else {
                 $handler = $handler->getClosure();
@@ -241,7 +241,7 @@ class Router
             $handler(...$invokeArgs);
         } catch (\Throwable $th) {
             if ($th instanceof \ReflectionException) {
-                error_log($th);
+                dd($th);
             }
 
             // TODO: need to dispatch an event?
@@ -310,6 +310,19 @@ class Router
         foreach ($handler->getParameters() as $index => $rparam) {
             $paramName = $rparam->getName();
 
+            // Only for first two parameters will be Request and Response
+            if ($index < 2) {
+                if (preg_match('#^(R|r)eq.*#', $paramName) != false) {
+                    $invokeArgs[$paramName] = $request;
+                    continue;
+                }
+
+                if (preg_match('#^(R|r)es.*#', $paramName) != false) {
+                    $invokeArgs[$paramName] = $response;
+                    continue;
+                }
+            }
+
             // First check route parameters and query/post parameters
             $paramValue = $request->getParam($paramName) ?? $request->get($paramName);
 
@@ -318,12 +331,8 @@ class Router
                 if ($rparam->isDefaultValueAvailable()) {
                     // Use parameter's default value from method signature
                     $paramValue = $rparam->getDefaultValue();
-                } else if (! $rparam->isOptional()) {
-                    if ($index > 2) {
-                        // Required parameter not provided
-                        throw new \InvalidArgumentException("Parameter {$paramName} is required");
-                    }
-                    continue;
+                } elseif (! $rparam->isOptional()) {
+                    throw new \InvalidArgumentException("Parameter {$paramName} is required");
                 } else {
                     // Optional parameter without default - use type default
                     $paramValue = match ($rparam->getType()?->getName()) {

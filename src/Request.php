@@ -1,10 +1,17 @@
 <?php
+
 namespace Flake;
 
 class Request
 {
     protected static array $params = [];
     public ?Session $session       = null;
+
+    public function __construct()
+    {
+        $this->session = make(Session::class);
+    }
+
     /**
      * Get Parameters
      *

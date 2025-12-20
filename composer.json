@@ -6,7 +6,8 @@
   "autoload": {
     "psr-4": {
       "Flake\\": "src/"
-    }
+    },
+    "files": ["./helper.php"]
   },
   "authors": [
     {

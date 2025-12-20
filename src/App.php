@@ -1,10 +1,28 @@
 <?php
+
 namespace Flake;
 
 use Flake\Exceptions\NotSupportHTTPMethodException;
 
 class App
 {
+    public string $instanceId = '';
+
+    public function __construct()
+    {
+        $this->instanceId = uniqid();
+
+        // Use default container
+        new ApplicationContext(null);
+
+        // Initialize ApplicationContext
+        if ($container = ApplicationContext::getContainer()) {
+            if ($container instanceof \Flake\Container) {
+                $container->set(self::class, $this);
+            }
+        }
+    }
+
     /**
      * Run the app
      *
@@ -17,8 +35,8 @@ class App
             self::init(getcwd());
         }
 
-        $request  = new Request();
-        $response = new Response();
+        $request  = make(Request::class);
+        $response = make(Response::class);
         // TODO: should we sanitize the request?
         $request->setParams($_REQUEST);
 
@@ -36,7 +54,7 @@ class App
                 }
             }
 
-            error_log($th);
+            dd($th);
             $response->status(500)->send('Internal Server Error');
         }
     }

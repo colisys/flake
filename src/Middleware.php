@@ -1,4 +1,5 @@
 <?php
+
 namespace Flake;
 
 class Middleware
@@ -13,7 +14,7 @@ class Middleware
      *
      * @param \Closure(Request $request, Response $response, Middleware $next) $middleware
      */
-    public static function use (callable $middleware): void
+    public static function use(callable $middleware): void
     {
         if (! is_callable($middleware)) {
             throw new \Exception("Middleware must be a callable.");
@@ -28,17 +29,6 @@ class Middleware
      */
     public static function run(Request $request, Response $response): array
     {
-        // When middleware returns not as [$request, $response], the following code will raise an error
-        // // Build the middleware chain from last to first
-        // $next = fn($req, $res) => [$req, $res];
-
-        // foreach (array_reverse(self::$middlewares) as $middleware) {
-        //     $next = fn($req, $res) => $middleware($req, $res, $next);
-        // }
-
-        // // Run the fully composed chain
-        // return $next($request, $response);
-
         $tguard = function (Request $request, Response $response) {
             return function () use ($request, $response) {
                 return [$request, $response];
@@ -46,6 +36,7 @@ class Middleware
         };
 
         $count = 0;
+        // Walk through the middleware stack, unless middleware returns null
         foreach (array_reverse(self::$middlewares) as $middleware) {
             $count++;
             $tguard = $middleware($request, $response, $tguard);
