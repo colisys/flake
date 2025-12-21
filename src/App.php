@@ -3,10 +3,7 @@
 namespace Flake;
 
 use Flake\Exceptions\NotSupportHTTPMethodException;
-use Flake\Persistent\Builder\SqliteBuilder;
-use Flake\Persistent\Driver\SqliteDriver;
-use Flake\Persistent\Facade\Facade;
-use Flake\Persistent\Facade\SqliteFacade;
+use Flake\Persistent\Facade\AbstractFacade;
 use Flake\Persistent\Factory;
 
 class App
@@ -29,7 +26,7 @@ class App
 
                 switch ($env->get('DATABASE_TYPE')) {
                     case 'sqlite':
-                        $container->set(Facade::class, Factory::make(
+                        $container->set(AbstractFacade::class, Factory::make(
                             'sqlite',
                             ['database' => basename($env->get('DATABASE_DSN') ?? ':memory:')]
                         ));
