@@ -4,9 +4,14 @@ namespace Flake;
 
 class Session
 {
-    public function __construct()
+    /**
+     * @param array{"save_path":string,"prefix":string} $options
+     */
+    public function __construct(array $options = [])
     {
         if (session_status() === PHP_SESSION_NONE) {
+            session_save_path($options['save_path'] ?? sys_get_temp_dir());
+            session_id(session_create_id($options['prefix'] ?? "flake"));
             session_start();
         }
 
@@ -47,5 +52,20 @@ class Session
     public function remove(string $key): void
     {
         unset($_SESSION[$key]);
+    }
+
+    public function has(string $key): bool
+    {
+        return isset($_SESSION[$key]);
+    }
+
+    public function destroy(): void
+    {
+        session_destroy();
+    }
+
+    public function getId(): string
+    {
+        return session_id();
     }
 }

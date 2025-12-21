@@ -32,8 +32,17 @@ class Response
      */
     public function header(string $name, string $value): self
     {
-        $this->headers[$name] = $value;
-        header("{$name}: {$value}");
+        // For multiple headers with same name, like Set-Cookie
+        if (isset($this->headers[$name])) {
+            if (!is_array($this->headers[$name]))
+                $this->headers[$name] = [$this->headers[$name]];
+            $this->headers[$name][] = $value;
+            header("{$name}: {$value}", false);
+        } else {
+            $this->headers[$name] = $value;
+            header("{$name}: {$value}");
+        }
+
         return $this;
     }
 
