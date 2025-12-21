@@ -16,12 +16,16 @@
     }
   ],
   "require": {
-    "php": ">=8.0"
+    "php": ">=8.0",
+    "ext-sqlite3": "*"
   },
   "scripts": {
     "start": [
       "Composer\\Config::disableProcessTimeout",
-      "@php -S localhost:8000 -t public"
+      "BASE_DIR=`pwd` php -S 0.0.0.0:8000 -t public"
     ]
+  },
+  "require-dev": {
+    "friendsofphp/php-cs-fixer": "^3.92"
   }
 }

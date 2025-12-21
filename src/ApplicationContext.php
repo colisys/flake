@@ -9,7 +9,7 @@ class ApplicationContext
 {
     private static ContainerInterface $container;
 
-    public function __construct(?ContainerInterface $container)
+    public function __construct(?ContainerInterface $container = null)
     {
         self::$container = $container ?? new Container();
     }

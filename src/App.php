@@ -3,6 +3,11 @@
 namespace Flake;
 
 use Flake\Exceptions\NotSupportHTTPMethodException;
+use Flake\Persistent\Builder\SqliteBuilder;
+use Flake\Persistent\Driver\SqliteDriver;
+use Flake\Persistent\Facade\Facade;
+use Flake\Persistent\Facade\SqliteFacade;
+use Flake\Persistent\Factory;
 
 class App
 {
@@ -14,11 +19,22 @@ class App
 
         // Use default container
         new ApplicationContext(null);
+        self::path(getenv("BASE_DIR"));
+        $env = make(Env::class, ['basePath' => self::path()]);
 
         // Initialize ApplicationContext
         if ($container = ApplicationContext::getContainer()) {
             if ($container instanceof \Flake\Container) {
                 $container->set(self::class, $this);
+
+                switch ($env->get('DATABASE_TYPE')) {
+                    case 'sqlite':
+                        $container->set(Facade::class, Factory::make(
+                            'sqlite',
+                            ['database' => basename($env->get('DATABASE_DSN') ?? ':memory:')]
+                        ));
+                        break;
+                }
             }
         }
     }
@@ -42,12 +58,12 @@ class App
 
         try {
             $router = Router::buildRouter($request, $response);
-            Middleware::run($request, $response);
+            list($request, $response) = Middleware::run($request, $response);
             Router::dispatch($request, $response, $router);
         } catch (\Throwable $th) {
             if ($th instanceof NotSupportHTTPMethodException) {
                 // Try to run middleware
-                Middleware::run($request, $response);
+                list($request, $response) = Middleware::run($request, $response);
                 // Check middleware sent response or not
                 if ($response->sent) {
                     return;

@@ -5,14 +5,14 @@ namespace Flake;
 class Middleware
 {
     /**
-     * @var array<\Closure(Request $request, Response $response, Middleware $next)>
+     * @var array<\Closure(Request $request, Response $response, \Closure $next)>
      */
     protected static array $middlewares = [];
 
     /**
      * Add a middleware to the stack
      *
-     * @param \Closure(Request $request, Response $response, Middleware $next) $middleware
+     * @param \Closure(Request &$request, Response &$response, \Closure $next) $middleware
      */
     public static function use(callable $middleware): void
     {
@@ -29,23 +29,19 @@ class Middleware
      */
     public static function run(Request $request, Response $response): array
     {
-        $tguard = function (Request $request, Response $response) {
+        // Walk through the middleware stack, unless middleware returns null
+        $middlewares = self::$middlewares;
+        $result = function (Request $request, Response $response) {
             return function () use ($request, $response) {
                 return [$request, $response];
             };
         };
 
-        $count = 0;
-        // Walk through the middleware stack, unless middleware returns null
-        foreach (array_reverse(self::$middlewares) as $middleware) {
-            $count++;
-            $tguard = $middleware($request, $response, $tguard);
-            // When middleware returns null, stop the middleware stack
-            if ($tguard === null) {
-                // TODO: should we dispatch an event?
-                // Events::dispatch('App.Error', new \Exception("Middleware stopped at no.$count middleware."));
-                die();
-            }
+        while (count($middlewares) > 0) {
+            $middleware = array_shift($middlewares);
+            $result = $middleware($request, $response, $result);
+            if ($result == null) die();
+            list($request, $response) = is_callable($result) ? $result() : $result;
         }
 
         return [$request, $response];
