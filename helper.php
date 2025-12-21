@@ -27,7 +27,7 @@ if (!function_exists("dd")) {
 
         $fd = fopen($output, "w");
         $trace = debug_backtrace(limit: 1);
-        fwrite($fd, $colors['cyan'] . "--[DUMP]----------------------------------------" . $colors['reset'] . "\n");
+        fwrite($fd, $colors['cyan'] . "--[DUMP]------" . date('Y-m-d H:i:s') . '------[START]--' . $colors['reset'] . "\n");
         if ($withCode) {
             fwrite($fd, $colors['yellow'] . "--[CODE]----------------------------------------" . $colors['reset'] . "\n");
             if ($data instanceof \Throwable) {
@@ -83,7 +83,7 @@ if (!function_exists("dd")) {
             fwrite($fd, $colors['yellow'] . "--[THROWABLE]-----------------------------------------" . $colors['reset'] . "\n");
             fwrite($fd, $colors['red'] . 'Code: ' . $data->getCode() .  ', Message: ' . $data->getMessage() . $colors['reset'] . "\n");
             fwrite($fd, $colors['yellow'] . "--[TRACE]-----------------------------------------" . $colors['reset'] . "\n");
-            fwrite($fd, $colors['magenta'] . trim(var_export(debug_backtrace(), true), "\n") . $colors['reset'] . "\n");
+            fwrite($fd, $colors['red'] . trim(var_export(debug_backtrace(), true), "\n") . $colors['reset'] . "\n");
         } elseif ($withDump) {
             fwrite($fd, $colors['yellow'] . "--[VAR]-----------------------------------------" . $colors['reset'] . "\n");
             fwrite($fd, $colors['magenta'] . trim(var_export($data, true), "\n") . $colors['reset'] . "\n");
