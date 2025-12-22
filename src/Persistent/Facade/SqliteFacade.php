@@ -7,7 +7,7 @@ use Flake\Persistent\Builder\SqliteBuilder;
 use Flake\Persistent\Driver\AbstractDriver;
 use Flake\Persistent\Driver\SqliteDriver;
 
-class SqliteFacade implements Facade
+class SqliteFacade implements AbstractFacade
 {
     public function __construct(
         protected SqliteBuilder $builder,

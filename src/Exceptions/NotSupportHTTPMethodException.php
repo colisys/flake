@@ -1,5 +1,5 @@
 <?php
+
 namespace Flake\Exceptions;
 
-class NotSupportHTTPMethodException extends \Exception
-{}
+class NotSupportHTTPMethodException extends \Exception {}

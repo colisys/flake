@@ -1,6 +1,5 @@
 <?php
+
 namespace Flake\Exceptions;
 
-class RouterDispatchException extends \Exception
-{
-}
+class RouterDispatchException extends \Exception {}

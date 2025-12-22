@@ -1,5 +1,5 @@
 <?php
 
-namespace Flake\Persistent;
+namespace Flake\Persistent\Exception;
 
 class DatabaseTypeNotSupportException extends \Exception {}

@@ -1,6 +1,6 @@
 <?php
 
-namespace Flake;
+namespace Flake\DI;
 
 use Psr\Container\ContainerInterface;
 
@@ -12,6 +12,9 @@ class Container implements ContainerInterface
     {
         if (!isset(self::$instances[$id])) {
             return null;
+        } elseif ($info = ComponentCollector::getClassInfo($id)) {
+            if (!$info['t'])
+                return clone self::$instances[$id];
         }
 
         return self::$instances[$id];

@@ -1,5 +1,7 @@
 <?php
 
+namespace Flake;
+
 if (!function_exists("dd")) {
     /** 
      * Dump data
@@ -71,7 +73,7 @@ if (!function_exists("dd")) {
             foreach (array_splice($file, max(0, $line_number - 3), min(7, count($file))) as $index => $line) {
                 $prefix = $index + max(1, $line_number - 2);
                 if ($line_number == $prefix - 1) {
-                    $prefix = ">>";
+                    $prefix = str_repeat(">", strlen("{$line_number}"));
                     fwrite($fd, $colors['red'] . $prefix . ': ' . trim($line, "\n") . $colors['reset'] . "\n");
                 } else {
                     $prefix = sprintf("%02d", $prefix);
@@ -90,28 +92,5 @@ if (!function_exists("dd")) {
         }
         fwrite($fd, $colors['cyan'] . "-----------------------------------------[END]--" . $colors['reset'] . "\n");
         fclose($fd);
-    }
-}
-
-if (!function_exists("make")) {
-    /**
-     * @template T
-     * @param class-string<T> $class
-     * @param array $options
-     * @return T
-     */
-    function make($class, $options = [])
-    {
-        $class = str_replace("/", "\\", $class);
-        $container = \Flake\ApplicationContext::getContainer();
-        if ($container->has($class)) {
-            return $container->get($class);
-        } else if (class_exists($class)) {
-            if ($container instanceof \Flake\Container) {
-                $container->set($class, new $class(...$options));
-            }
-            return $container->get($class);
-        }
-        return null;
     }
 }

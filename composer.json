@@ -5,9 +5,9 @@
   "license": "MIT",
   "autoload": {
     "psr-4": {
-      "Flake\\": "src/"
-    },
-    "files": ["./helper.php"]
+      "Flake\\": "src/",
+      "App\\": "app/"
+    }
   },
   "authors": [
     {
@@ -17,7 +17,8 @@
   ],
   "require": {
     "php": ">=8.0",
-    "ext-sqlite3": "*"
+    "ext-sqlite3": "*",
+    "ext-redis": "*"
   },
   "scripts": {
     "start": [

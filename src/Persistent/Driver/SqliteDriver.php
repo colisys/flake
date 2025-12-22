@@ -43,6 +43,7 @@ class SqliteDriver implements AbstractDriver
 
     public function query(string $sql, array $bindings = []): Generator
     {
+        $this->connect();
         $stmt = $this->connection?->prepare($sql);
         foreach ($bindings as $key => $value) {
             $stmt->bindValue($key + 1, $value);
@@ -61,12 +62,13 @@ class SqliteDriver implements AbstractDriver
 
     public function execute(string $sql, array $bindings = []): bool
     {
+        $this->connect();
         $stmt = $this->connection?->prepare($sql);
         foreach ($bindings as $key => $value) {
             $stmt->bindValue($key + 1, $value);
         }
         $this->lastSql = $stmt->getSQL(true);
-        return $stmt->execute($sql) !== false;
+        return $stmt->execute() !== false;
     }
 
     public function getEffectedRows(): int

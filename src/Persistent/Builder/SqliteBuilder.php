@@ -19,19 +19,19 @@ class SqliteBuilder implements AbstractBuilder
     protected array $unions = [];
     protected string $setType = 'select';
 
-    public function table(string $tableName): AbstractBuilder
+    public function table(string $tableName): static
     {
         $this->table = $tableName;
         return $this;
     }
 
-    public function columns(array $columns): AbstractBuilder
+    public function columns(array $columns): static
     {
         $this->columns = $columns;
         return $this;
     }
 
-    public function where(string $column, $value, $operator = '=', $boolean = 'AND'): AbstractBuilder
+    public function where(string $column, $value, $operator = '=', $boolean = 'AND'): static
     {
         $this->wheres[] = [
             'operator' => $operator,
@@ -42,47 +42,47 @@ class SqliteBuilder implements AbstractBuilder
         return $this;
     }
 
-    public function whereOr(string $column, $value, $operator = '='): AbstractBuilder
+    public function whereOr(string $column, $value, $operator = '='): static
     {
         return $this->where($column, $value, $operator, 'OR');
     }
 
-    public function whereBetween(string $column, array $values, $boolean = 'AND'): AbstractBuilder
+    public function whereBetween(string $column, array $values, $boolean = 'AND'): static
     {
         return $this->where($column, $values, 'BETWEEN', $boolean);
     }
 
-    public function whereIn(string $column, array $values, string $boolean = 'AND'): AbstractBuilder
+    public function whereIn(string $column, array $values, string $boolean = 'AND'): static
     {
         return $this->where($column, $values, 'IN', $boolean);
     }
 
-    public function whereNotIn(string $column, array $values, string $boolean = 'AND'): AbstractBuilder
+    public function whereNotIn(string $column, array $values, string $boolean = 'AND'): static
     {
         return $this->where($column, $values, 'NOT IN', $boolean);
     }
 
-    public function whereNull(string $column, string $boolean = 'AND'): AbstractBuilder
+    public function whereNull(string $column, string $boolean = 'AND'): static
     {
         return $this->where($column, null, 'IS', $boolean);
     }
 
-    public function whereNotNull(string $column, string $boolean = 'AND'): AbstractBuilder
+    public function whereNotNull(string $column, string $boolean = 'AND'): static
     {
         return $this->where($column, null, 'NOT', $boolean);
     }
 
-    public function whereLike(string $column, string $value, string $boolean = 'AND'): AbstractBuilder
+    public function whereLike(string $column, string $value, string $boolean = 'AND'): static
     {
         return $this->where($column, $value, 'LIKE', $boolean);
     }
 
-    public function whereNotLike(string $column, string $value, string $boolean = 'AND'): AbstractBuilder
+    public function whereNotLike(string $column, string $value, string $boolean = 'AND'): static
     {
         return $this->where($column, $value, 'NOT LIKE', $boolean);
     }
 
-    public function whereRaw(string $raw): AbstractBuilder
+    public function whereRaw(string $raw): static
     {
         $this->wheres[] = [
             'type' => 'raw',
@@ -92,7 +92,7 @@ class SqliteBuilder implements AbstractBuilder
         return $this;
     }
 
-    public function select(array|string $column = '*'): AbstractBuilder
+    public function select(array|string $column = '*'): static
     {
         if (is_string($column)) {
             $this->columns = [$column];
@@ -102,45 +102,45 @@ class SqliteBuilder implements AbstractBuilder
         return $this;
     }
 
-    public function insert(array $data = []): AbstractBuilder
+    public function insert(array $data = []): static
     {
         $this->setType = 'insert';
         $this->sets = $data;
         return $this;
     }
 
-    public function update(array $data = []): AbstractBuilder
+    public function update(array $data = []): static
     {
         $this->setType = 'update';
         $this->sets = $data;
         return $this;
     }
 
-    public function delete(): AbstractBuilder
+    public function delete(): static
     {
         $this->setType = 'delete';
         return $this;
     }
 
-    public function set(string $column, $value): AbstractBuilder
+    public function set(string $column, $value): static
     {
         $this->sets[$column] = $value;
         return $this;
     }
 
-    public function limit(int $limit): AbstractBuilder
+    public function limit(int $limit): static
     {
         $this->limit = $limit;
         return $this;
     }
 
-    public function offset(int $offset): AbstractBuilder
+    public function offset(int $offset): static
     {
         $this->offset = $offset;
         return $this;
     }
 
-    public function orderBy(string $column, string $direction = 'ASC'): AbstractBuilder
+    public function orderBy(string $column, string $direction = 'ASC'): static
     {
         $this->orders[] = [
             'column' => $column,
@@ -149,13 +149,18 @@ class SqliteBuilder implements AbstractBuilder
         return $this;
     }
 
-    public function group(string $column): AbstractBuilder
+    public function orderByDesc(string $column): static
+    {
+        return $this->orderBy($column, 'DESC');
+    }
+
+    public function group(string $column): static
     {
         $this->groups[] = $column;
         return $this;
     }
 
-    public function having(string $column, $value): AbstractBuilder
+    public function having(string $column, $value): static
     {
         $this->havings[] = [
             'column' => $column,
@@ -165,7 +170,7 @@ class SqliteBuilder implements AbstractBuilder
         return $this;
     }
 
-    public function join(string $table, string $column1, string $column2): AbstractBuilder
+    public function join(string $table, string $column1, string $column2): static
     {
         $this->joins[] = [
             'type' => 'INNER',
@@ -176,7 +181,7 @@ class SqliteBuilder implements AbstractBuilder
         return $this;
     }
 
-    public function leftJoin(string $table, string $column1, string $column2): AbstractBuilder
+    public function leftJoin(string $table, string $column1, string $column2): static
     {
         $this->joins[] = [
             'type' => 'LEFT',
@@ -187,7 +192,7 @@ class SqliteBuilder implements AbstractBuilder
         return $this;
     }
 
-    public function rightJoin(string $table, string $column1, string $column2): AbstractBuilder
+    public function rightJoin(string $table, string $column1, string $column2): static
     {
         $this->joins[] = [
             'type' => 'RIGHT',
@@ -198,7 +203,7 @@ class SqliteBuilder implements AbstractBuilder
         return $this;
     }
 
-    public function innerJoin(string $table, string $column1, string $column2): AbstractBuilder
+    public function innerJoin(string $table, string $column1, string $column2): static
     {
         $this->joins[] = [
             'type' => 'INNER',
@@ -209,7 +214,7 @@ class SqliteBuilder implements AbstractBuilder
         return $this;
     }
 
-    public function fullJoin(string $table, string $column1, string $column2): AbstractBuilder
+    public function fullJoin(string $table, string $column1, string $column2): static
     {
         $this->joins[] = [
             'type' => 'FULL',
@@ -220,13 +225,13 @@ class SqliteBuilder implements AbstractBuilder
         return $this;
     }
 
-    public function union(string $table): AbstractBuilder
+    public function union(string $table): static
     {
         $this->unions[] = $table;
         return $this;
     }
 
-    public function distinct(): AbstractBuilder
+    public function distinct(): static
     {
         $this->distinct = true;
         return $this;
@@ -357,7 +362,7 @@ class SqliteBuilder implements AbstractBuilder
         ];
     }
 
-    public function reset(): AbstractBuilder
+    public function reset(): static
     {
         $this->table = '';
         $this->wheres = [];

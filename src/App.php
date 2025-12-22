@@ -1,38 +1,29 @@
 <?php
 
+
 namespace Flake;
 
+
+use Flake\DI\ApplicationContext;
 use Flake\Exceptions\NotSupportHTTPMethodException;
-use Flake\Persistent\Facade\AbstractFacade;
-use Flake\Persistent\Factory;
 
 class App
 {
     public string $instanceId = '';
+    protected ApplicationContext $context;
 
     public function __construct()
     {
+        require_once __DIR__ . '/Helper.php';
         $this->instanceId = uniqid();
-
-        // Use default container
-        new ApplicationContext(null);
-        self::path(getenv("BASE_DIR"));
-        $env = make(Env::class, ['basePath' => self::path()]);
+        self::path(getenv("BASE_DIR") ?? defined('BASE_DIR') ? BASE_DIR : null);
 
         // Initialize ApplicationContext
-        if ($container = ApplicationContext::getContainer()) {
-            if ($container instanceof \Flake\Container) {
-                $container->set(self::class, $this);
+        $this->context = ApplicationContext::init(self::path());
 
-                switch ($env->get('DATABASE_TYPE')) {
-                    case 'sqlite':
-                        $container->set(AbstractFacade::class, Factory::make(
-                            'sqlite',
-                            ['database' => basename($env->get('DATABASE_DSN') ?? ':memory:')]
-                        ));
-                        break;
-                }
-            }
+        if ($container = $this->context->getContainer()) {
+            if (method_exists($container, 'set'))
+                $container->{"set"}(App::class, $this);
         }
     }
 
@@ -99,5 +90,26 @@ class App
         }
 
         return self::$basePath;
+    }
+}
+
+if (!function_exists("make")) {
+    /**
+     * @template T
+     * @param class-string<T> $class
+     * @param array $options
+     * @return T
+     */
+    function make($class, $options = [], $persist = true)
+    {
+        $class = str_replace("/", "\\", $class);
+        $container = \Flake\DI\ApplicationContext::getContainer();
+        if ($container->has($class)) {
+            return $container->get($class);
+        } else if (class_exists($class)) {
+            ApplicationContext::make($class, $options, $persist);
+            return $container->get($class);
+        }
+        return null;
     }
 }

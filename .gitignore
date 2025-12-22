@@ -4,3 +4,4 @@ public/.htaccess
 .env
 .vscode/
 .DS_Store
+cache

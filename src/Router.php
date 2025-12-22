@@ -2,9 +2,9 @@
 
 namespace Flake;
 
+use Flake\DI\ApplicationContext;
 use Flake\Exceptions\NotSupportHTTPMethodException;
 use Flake\Exceptions\RouterDispatchException;
-use Flake\Exceptions\RouterNotFoundException;
 
 class Router
 {
@@ -270,25 +270,8 @@ class Router
         $invokeArgs = self::defaultNoTypeHintCallback($handler, $request, $response);
         foreach ($handler->getParameters() as $rparam) {
             $paramName = $rparam->getName();
-
-            // Handle Request and Response injection
-            if ($rparam->getType() instanceof \ReflectionNamedType) {
-                $typeName = $rparam->getType()->getName();
-                if ($typeName === Request::class) {
-                    $invokeArgs[$paramName] = $request;
-                    continue;
-                }
-                if ($typeName === Response::class) {
-                    $invokeArgs[$paramName] = $response;
-                    continue;
-                }
-
-                // Validate non-builtin types early
-                // TODO: Maybe we should walk reading autoloader_classmap to create an DI container and inject them later?
-                // This will simplify the code and make it more flexible
-                if (! $rparam->getType()->isBuiltin()) {
-                    throw new \InvalidArgumentException("Parameter {$paramName} must be a scalar type");
-                }
+            if ($rparam->getType() instanceof \ReflectionNamedType && !$rparam->getType()->isBuiltin()) {
+                $invokeArgs[$paramName] = ApplicationContext::make($rparam->getType()->getName(), []);
             }
         }
         return $invokeArgs;
@@ -309,7 +292,6 @@ class Router
         $invokeArgs = [];
         foreach ($handler->getParameters() as $index => $rparam) {
             $paramName = $rparam->getName();
-
             // Only for first two parameters will be Request and Response
             if ($index < 2) {
                 if (preg_match('#^(R|r)eq.*#', $paramName) != false) {
@@ -332,7 +314,13 @@ class Router
                     // Use parameter's default value from method signature
                     $paramValue = $rparam->getDefaultValue();
                 } elseif (! $rparam->isOptional()) {
-                    throw new \InvalidArgumentException("Parameter {$paramName} is required");
+                    if ($rparam->getType() instanceof \ReflectionNamedType) {
+                        if ($rparam->getType()->allowsNull()) {
+                            $paramValue = null;
+                        } else if ($rparam->getType()->isBuiltin()) {
+                            throw new \InvalidArgumentException("Parameter {$paramName} is required");
+                        }
+                    }
                 } else {
                     // Optional parameter without default - use type default
                     $paramValue = match ($rparam->getType()?->getName()) {
