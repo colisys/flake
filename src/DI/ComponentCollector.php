@@ -105,14 +105,17 @@ class ComponentCollector
 
     protected static function collect(ContainerInterface $container): array
     {
+        /**
+         * @var array<int|string,\Generator<array-key,\SplFileInfo>> $class_map
+         */
         $class_map  = [];
         array_filter(
             require_once BASE_DIR . '/vendor/composer/autoload_psr4.php',
             function ($path, $namespace) use (&$class_map) {
                 foreach (array_merge(config('dependencies.scan.namespaces', []), ['Flake\\']) as $scanNs) {
                     if (str_starts_with($namespace, $scanNs)) {
-                        $p = array_shift($path);                        
-                        $class_map[$namespace] = static::findPhpFilesRecursively($p);
+                        $p = array_shift($path);
+                        $class_map[$namespace] = rscandir($p, '/\.php$/');
                     }
                 }
             },
@@ -121,8 +124,10 @@ class ComponentCollector
 
         $result = [];
         foreach ($class_map as $files) {
-            foreach ($files as $file) {
-                $contents = file_get_contents($file);
+            while ($files->valid()) {
+                $file = $files->current();
+
+                $contents = file_get_contents($file->getPathname());
                 preg_match('/^namespace\s+(.+?);/m', $contents, $matches);
                 if (isset($matches[1])) {
                     $ns = $matches[1];
@@ -133,30 +138,35 @@ class ComponentCollector
                         $result["$ns\\$class"] = $info = ComponentVisitor::visit("\\$ns\\$class");
                     }
                 }
+
+                $files->next();
             }
         }
         return $result;
     }
-    
+}
+
+if (!function_exists('rscandir')) {
     /**
-     * Find php files recursively
-     *
+     * Recursive scan directory
+     * 
      * @param string $dir
-     * @return array
+     * @param string $pattern
+     * @return \Generator<array-key,\SplFileInfo>
      */
-    protected static function findPhpFilesRecursively(string $dir): array 
+    function rscandir(string $dir, $pattern)
     {
-        $files = [];
         $iterator = new \RecursiveIteratorIterator(
             new \RecursiveDirectoryIterator($dir, \RecursiveDirectoryIterator::SKIP_DOTS)
         );
-        
+
+        /**
+         * @var \SplFileInfo $file
+         */
         foreach ($iterator as $file) {
-            if ($file->isFile() && $file->getExtension() === 'php') {
-                $files[] = $file->getPathname();
+            if ($file->isFile() && preg_match($pattern, $file->getFilename()) > 0) {
+                yield $file;
             }
         }
-        
-        return $files;
     }
 }

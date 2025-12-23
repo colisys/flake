@@ -8,6 +8,8 @@ use Flake\Cache\Exception\CacheHashMismatchException;
 use Flake\Cache\Exception\CacheTrunkCorruptionException;
 use Flake\Cache\Exception\CacheVersionException;
 
+use function Flake\DI\rscandir;
+
 enum Compression: int
 {
     case NONE = 0;
@@ -56,6 +58,22 @@ class FileCacheFacade implements AbstractFacade
         $this->headerLength = strlen(self::MAGIC
             . pack("CCPqC", 0, 0, 0, 0, 0)
             . hash("crc32b", ""));
+
+        $this->gc();
+    }
+
+    protected function gc()
+    {
+        $files = rscandir($this->basePath, '/^flake_.*\.cache.*?$/');
+        while ($files->valid()) {
+            $file = $files->current();
+            $basename = $file->getBasename();
+            $d = explode('_', explode('.', $basename)[0]);
+            $expires = array_pop($d);
+            if ($expires != -1 && $expires < time())
+                unlink($file->getPathname());
+            $files->next();
+        }
     }
 
     public function getInfo(string $key)
@@ -202,6 +220,7 @@ class FileCacheFacade implements AbstractFacade
         foreach (glob($this->basePath . "/{$subdir_name}/flake_{$key}_*.cache*") as $file) {
             unlink($file);
         }
+        return true;
     }
 
     public function __destruct() {}

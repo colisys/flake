@@ -6,8 +6,6 @@ use Flake\View\Attribute\Rule;
 use Flake\View\Renderer;
 use Flake\View\Rules\Exception\RuleMismatchException;
 
-use function Flake\dd;
-
 /**
  * Loop rule
  * 

@@ -5,8 +5,6 @@ namespace Flake\View\Rules;
 use Flake\View\Attribute\Rule;
 use Flake\View\Renderer;
 
-use function Flake\dd;
-
 /**
  * Conditions rule
  * 

@@ -10,6 +10,7 @@ use Flake\DI\Contract\AutoRegisterClass;
 use Flake\Response;
 use Flake\View\Attribute\Rule;
 use Flake\View\Rules\AbstractRule;
+use Flake\View\Rules\XSSClean;
 use Psr\Container\ContainerInterface;
 
 use function Flake\config;
@@ -26,6 +27,9 @@ class Renderer extends AutoRegisterClass
     protected string $cache_path = '';
     protected array $data = [];
     protected int $cache_ttl = 0;
+    protected array $allow_rules = [];
+    private static array $preRules = [];
+    private static array $postRules = [];
 
     public function __construct(
         protected ContainerInterface $container
@@ -33,9 +37,40 @@ class Renderer extends AutoRegisterClass
         $config = config('view', []);
         $this->basePath = $config['path'] ?? (BASE_DIR . '/views');
         $this->extension = $config['extension'] ?? 'html';
-        $this->enable_cache = (isset($config['enable_cache']) && $config['enable_cache'] > -1) ?? false;
+        $this->enable_cache = (isset($config['enable_cache']) && $config['enable_cache'] == 1) ?? false;
         $this->cache_path = $config['cache_path'] ?? sys_get_temp_dir();
         $this->cache_ttl = $config['cache_ttl'] ?? -1;
+        $this->allow_rules = $config['rules'] ?? [];
+
+        if (!count(self::$preRules) || !count(self::$postRules)) {
+            $classes =  ComponentCollector::getClassesByAttribute(Rule::class);
+
+            foreach ($classes as $key => $value) {
+                if (!in_array($key, $this->allow_rules)) {
+                    unset($classes[$key]);
+                    continue;
+                }
+                $args = $value->getAttributes(Rule::class)[0]->getArguments();
+                if (isset($args['execution']) && $args['execution'] == 'post') {
+                    self::$postRules[] = $value;
+                } else {
+                    self::$preRules[] = $value;
+                }
+            }
+
+            $sort = function ($a, $b) {
+                $argsA = $a->getAttributes(Rule::class)[0]->getArguments();
+                $argsB = $b->getAttributes(Rule::class)[0]->getArguments();
+
+                $weightA = $argsA['weight'] ?? 0;
+                $weightB = $argsB['weight'] ?? 0;
+
+                return $weightA <=> $weightB;
+            };
+
+            usort(self::$preRules, $sort);
+            usort(self::$postRules, $sort);
+        }
     }
 
     /**
@@ -70,14 +105,14 @@ class Renderer extends AutoRegisterClass
     /**
      * Render a view file.
      */
-    public function render($returns = false)
+    public function render(bool $returns = false, bool $noxss = false)
     {
         $cache = make(AbstractFacade::class);
 
         $response = make(Response::class);
         $viewPath = $this->basePath . '/' . ltrim($this->view, '/') . ".{$this->extension}";
 
-        if ($cache->has($viewPath)) {
+        if ($this->enable_cache && $cache->has($viewPath)) {
             $template = $cache->get($viewPath);
             $info = $cache->getInfo($viewPath);
             [$_, $template] = explode(PHP_EOL, $template, 2);
@@ -97,30 +132,15 @@ class Renderer extends AutoRegisterClass
         }
 
         // Create a new environment for the view
-        $output = (function (string $viewPath) {
-            $contents = file_get_contents($viewPath);
-
-            $rules = ComponentCollector::getClassesByAttribute(Rule::class);
-            foreach ($rules as $rule) {
-                $rule = make($rule->getName());
-                if ($rule instanceof AbstractRule) {
-                    if ($rule::$fullContext) {
-                        if ($rule::test($contents))
-                            $contents = $rule::apply($contents, $this);
-                    } else {
-                        $c = explode(PHP_EOL, $contents);
-                        $d = array_filter($c, fn($l) => $rule::test($l));
-                        foreach ($d as $index => $line) {
-                            $md = $rule::apply([$index => $line], $this);
-                            $c[$index] = $md[$index];
-                        }
-                        $contents = implode(PHP_EOL, $c);
-                    }
-                }
-            }
-
-            return $contents;
-        })($viewPath);
+        $output = $this->execRules(
+            self::$postRules,
+            $this->execRules(
+                self::$preRules,
+                file_get_contents($viewPath),
+                $noxss,
+            ),
+            $noxss,
+        );
 
         if (!$returns) {
             try {
@@ -139,6 +159,40 @@ class Renderer extends AutoRegisterClass
                 dd($e);
             }
         } else return $output;
+    }
+
+    /**
+     * Execute a rule set
+     * 
+     * @param array<\ReflectionClass> $rules
+     * @param string $contents
+     * @param bool $noxss
+     */
+    protected function execRules(array $rules, string $contents, bool $noxss = false)
+    {
+        foreach ($rules as $rule) {
+            if ($noxss && $rule->getName() == XSSClean::class) {
+                $contents = "<noxss>" . $contents . "</noxss>";
+                continue;
+            }
+
+            $rule = make($rule->getName());
+            if ($rule instanceof AbstractRule) {
+                if ($rule::$fullContext) {
+                    if ($rule::test($contents))
+                        $contents = $rule::apply($contents, $this);
+                } else {
+                    $c = explode(PHP_EOL, $contents);
+                    $d = array_filter($c, fn($l) => $rule::test($l));
+                    foreach ($d as $index => $line) {
+                        $md = $rule::apply([$index => $line], $this);
+                        $c[$index] = $md[$index];
+                    }
+                    $contents = implode(PHP_EOL, $c);
+                }
+            }
+        }
+        return $contents;
     }
 
     public function hit(...$data)
