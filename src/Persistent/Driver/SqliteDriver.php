@@ -2,8 +2,11 @@
 
 namespace Flake\Persistent\Driver;
 
+use Flake\Persistent\Exception\DatabaseException;
 use Generator;
 use SQLite3;
+
+use function Flake\dd;
 
 class SqliteDriver implements AbstractDriver
 {
@@ -41,34 +44,44 @@ class SqliteDriver implements AbstractDriver
         return $this->connection?->lastErrorMsg();
     }
 
-    public function query(string $sql, array $bindings = []): Generator
+    public function query(string $sql, array $bindings = []): ?Generator
     {
-        $this->connect();
-        $stmt = $this->connection?->prepare($sql);
-        foreach ($bindings as $key => $value) {
-            $stmt->bindValue($key + 1, $value);
-        }
-
-        $this->lastSql = $stmt->getSQL(true);
-
-        if ($result = $stmt->execute()) {
-            $result->reset();
-
-            while ($row = $result->fetchArray()) {
-                yield $row;
+        try {
+            $this->connect();
+            $stmt = $this->connection?->prepare($sql);
+            foreach ($bindings as $key => $value) {
+                $stmt->bindValue($key + 1, $value);
             }
+
+            $this->lastSql = $stmt->getSQL(true);
+
+            if ($result = $stmt->execute()) {
+                $result->reset();
+
+                while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+                    yield $row;
+                }
+            }
+        } catch (\Throwable $e) {
+            dd(new DatabaseException($this->getError(), $this->getErrorNo(), $e));
         }
+        return null;
     }
 
     public function execute(string $sql, array $bindings = []): bool
     {
-        $this->connect();
-        $stmt = $this->connection?->prepare($sql);
-        foreach ($bindings as $key => $value) {
-            $stmt->bindValue($key + 1, $value);
+        try {
+            $this->connect();
+            $stmt = $this->connection?->prepare($sql);
+            foreach ($bindings as $key => $value) {
+                $stmt->bindValue($key + 1, $value);
+            }
+            $this->lastSql = $stmt->getSQL(true);
+            return $stmt->execute() !== false;
+        } catch (\Throwable $e) {
+            dd(new DatabaseException($this->getError(), $this->getErrorNo(), $e));
         }
-        $this->lastSql = $stmt->getSQL(true);
-        return $stmt->execute() !== false;
+        return false;
     }
 
     public function getEffectedRows(): int

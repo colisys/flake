@@ -9,6 +9,7 @@ use Flake\DI\ComponentCollector;
 use Flake\Exception\NotSupportHTTPMethodException;
 use Flake\Exception\RouterDispatchException;
 use Flake\Exception\RouterRegistedException;
+use Flake\Persistent\Model;
 use Flake\View\Renderer;
 
 class Router
@@ -231,8 +232,6 @@ class Router
      */
     public static function dispatch(Request $request, Response $response, Router $router): void
     {
-        // TODO: We should check if the request is valid
-        $request->setParams($_REQUEST);
         $callback = $router->buildRouter();
 
         try {
@@ -302,6 +301,9 @@ class Router
     {
         $invokeArgs = self::defaultNoTypeHintCallback($handler, $request, $response);
         foreach ($handler->getParameters() as $rparam) {
+            if (isset($invokeArgs[$rparam->getName()]))
+                continue;
+
             $paramName = $rparam->getName();
             if ($rparam->getType() instanceof \ReflectionNamedType && !$rparam->getType()->isBuiltin()) {
                 $invokeArgs[$paramName] = ApplicationContext::make($rparam->getType()->getName(), []);

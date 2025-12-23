@@ -142,22 +142,18 @@ class Renderer extends AutoRegisterClass
             $noxss,
         );
 
-        if (!$returns) {
-            try {
-                $template = "<?php extract(unserialize('" . serialize($this->data) . "')); ?>\n" . $output;
-                $output = $this->hit($template);
-                if ($this->enable_cache)
-                    $cache->set($viewPath, $template, $this->cache_ttl);
+        $template = "<?php extract(unserialize('" . serialize($this->data) . "')); ?>\n" . $output;
+        $output = $this->hit($template);
+        if ($this->enable_cache)
+            $cache->set($viewPath, $template, $this->cache_ttl);
 
-                // Send the output to the client
-                return $response->stream()
-                    ->header('Content-Type', 'text/html; charset=utf-8')
-                    ->status(200)
-                    ->send($output)
-                    ->end();
-            } catch (\Exception $e) {
-                dd($e);
-            }
+        if (!$returns) {
+            // Send the output to the client
+            return $response->stream()
+                ->header('Content-Type', 'text/html; charset=utf-8')
+                ->status(200)
+                ->send($output)
+                ->end();
         } else return $output;
     }
 

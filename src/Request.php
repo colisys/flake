@@ -12,6 +12,8 @@ class Request
     {
         $this->session = make(Session::class);
         $this->headers = $this->headers();
+        // TODO: We should check if the request is valid
+        $this->setParams($_REQUEST);
     }
 
     /**

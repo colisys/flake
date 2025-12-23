@@ -4,14 +4,18 @@ namespace Flake\Persistent;
 
 use Flake\Attributes\Component;
 use Flake\DI\Contract\AutoRegister;
+use Flake\Middleware;
+use Flake\Persistent\Attribute\ModelMapping;
 use Flake\Persistent\Builder\SqliteBuilder;
 use Flake\Persistent\Driver\SqliteDriver;
 use Flake\Persistent\Exception\DatabaseTypeNotSupportException;
 use Flake\Persistent\Facade\AbstractFacade;
 use Flake\Persistent\Facade\SqliteFacade;
+use Flake\Router;
 use Psr\Container\ContainerInterface;
 
 use function Flake\config;
+use function Flake\dd;
 use function Flake\make;
 
 #[Component()]
@@ -55,6 +59,38 @@ class Factory implements AutoRegister
 
     public static function onAutoRegiste(ContainerInterface $container): void
     {
+        Middleware::use(function (&$request, &$response, $next) {
+            $router = make(Router::class)::buildRouter();
+            if (is_array($router)) {
+                [$class, $method] = $router;
+                $rmethod = new \ReflectionMethod($class, $method);
+            }
+            if (is_callable($router)) {
+                $rmethod = new \ReflectionFunction($router);
+            }
+
+            foreach ($rmethod->getParameters() as $param) {
+                if (is_subclass_of($param->getType()->getName(), Model::class, true)) {
+                    if ($instance = $param->getAttributes(ModelMapping::class)[0]?->newInstance()) {
+                        $pkId = $instance->pk;
+                        $paramName = $param->getName();
+                        if (str_starts_with($pkId, ">")) {
+                            $query = substr($pkId, 1);
+                            $pkId = $request->get($query, $instance->defaults);
+                        }
+
+                        if ($param->getType() instanceof \ReflectionNamedType) {
+                            $rmethod = new \ReflectionMethod($param->getType()->getName(), "find");
+                            $instance = $rmethod->invoke(null, $pkId);
+                            $request->setParam($paramName, $instance);
+                        }
+                    }
+                }
+            }
+
+            return $next($request, $response);
+        });
+
         if (method_exists($container, 'set'))
             $container->{"set"}(Factory::class, new static($container, config('database', [])));
     }

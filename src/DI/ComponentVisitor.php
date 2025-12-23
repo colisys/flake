@@ -9,6 +9,23 @@ use function Flake\dd;
 
 class ComponentVisitor
 {
+    protected static function determineType($type)
+    {
+        if ($type instanceof \ReflectionNamedType) {
+            return $type->getName();
+        }
+
+        if ($type instanceof \ReflectionUnionType) {
+            return implode('|', array_map(fn($t) => self::determineType($t), $type->getTypes()));
+        }
+
+        if ($type instanceof \ReflectionIntersectionType) {
+            return implode('&', array_map(fn($t) => self::determineType($t), $type->getTypes()));
+        }
+
+        return gettype($type);
+    }
+
     /**
      * @param class-string $class
      * @return ?array
@@ -35,7 +52,7 @@ class ComponentVisitor
                 'a' => $attrs,
                 'p' => array_map(fn($p) => [
                     'name' => $p->getName(),
-                    'type' => $p->getType()?->getName(),
+                    'type' => self::determineType($p->getType()),
                     'default' => $p->getDefaultValue(),
                 ], $rclass->getProperties()),
                 'm' => array_map(fn($m) => $m->getName(), $rclass->getMethods()),

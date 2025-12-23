@@ -5,17 +5,22 @@ namespace Flake\Persistent;
 use Flake\Persistent\Builder\AbstractBuilder;
 use Flake\Persistent\Driver\AbstractDriver;
 
+use function Flake\dd;
+use function Flake\make;
+
 abstract class Model
 {
     protected AbstractBuilder $builder;
     protected AbstractDriver $driver;
 
-    protected string $table = '';
-    protected string $pk = 'id';
-    protected array $visible = ['*'];
-    protected array $hidden = [];
-    protected array $fillable = [];
-    protected array $casts = [];
+    public static string $table = '';
+    public static string $pk = 'id';
+    public static array $fields = ['*'];
+    public static array $visible = ['*'];
+    public static array $hidden = [];
+    public static array $fillable = [];
+    public static array $casts = [];
+
     protected array $data = [];
     protected array $changed = [];
 
@@ -26,61 +31,80 @@ abstract class Model
                 return $this->changed[$name];
             return $this->data[$name];
         }
-        if (in_array($name, $this->hidden))
+        if (in_array($name, static::$hidden))
             return null;
 
         return $this->{$name};
     }
 
-    public function __construct(AbstractBuilder $builder, AbstractDriver $driver)
+    public function __set($name, $value)
     {
-        $this->builder = $builder;
-        $this->driver = $driver;
+        if (in_array($name, static::$fillable)) {
+            $this->changed[$name] = $value;
+            return;
+        }
+
+        $this->{$name} = $value;
     }
 
-    public function getPkName(): string
+    public function __construct(array $data = [])
     {
-        return $this->pk;
+        $this->data = $data;
+        $this->builder = make(AbstractBuilder::class);
+        $this->driver = make(AbstractDriver::class);
+    }
+
+    public static function getPkName(): string
+    {
+        return static::$pk;
     }
 
     public function getPkValue(): int|string|null
     {
-        if (array_key_exists($this->pk, $this->changed))
-            return $this->changed[$this->pk];
+        if (array_key_exists(static::getPkName(), $this->changed))
+            return $this->changed[static::getPkName()];
         else
-            return $this->data[$this->pk] ?? null;
+            return $this->data[static::getPkName()] ?? null;
     }
 
-    public function find(?int $id = null): ?static
+    /**
+     * @param string|int|null $id
+     */
+    public static function find($id = null): ?static
     {
-        $this->builder
-            ->table($this->table)
-            ->where($this->pk, $id ?? $this->getPkValue())
+        $builder = make(AbstractBuilder::class);
+        $builder->table(static::$table)
+            ->where(static::getPkName(), $id)
             ->limit(1)
-            ->select($this->visible);
+            ->select(static::$fields);
 
-        $this->driver->connect();
-        foreach ($this->driver->query(...$this->builder->build()) as $value) {
-            return $this->fill($value);
+        $driver = make(AbstractDriver::class);
+
+        $driver->connect();
+        foreach ($driver->query(...$builder->build()) as $value) {
+            return new static($value);
         }
         return null;
     }
 
     public function refresh(): ?static
     {
-        $name = $this->getPkName();
+        $name = static::getPkName();
         if (array_key_exists($name, $this->data) || array_key_exists($name, $this->changed)) {
             $this->changed = [];
-            $this->find();
+            $data = static::find($this->getPkValue())?->toArray() ?? [];
+            foreach (static::$fillable as $index => $field) {
+                $this->data[$field] = $data[$field] ?? null;
+            }
         }
 
         return $this;
     }
 
-    public function fill(array $data): static
+    public function fill(array $data = []): static
     {
         foreach ($data as $key => $value) {
-            if (in_array($key, $this->fillable))
+            if (in_array($key, static::$fillable))
                 $this->changed[$key] = $value;
         }
         return $this;
@@ -90,11 +114,11 @@ abstract class Model
     {
         if ($this->getPkValue() === null)
             $this->builder
-                ->table($this->table)
-                ->insert($this->changed);
+                ->table(static::$table)
+                ->insert(array_merge($this->data, $this->changed));
         else $this->builder
-            ->table($this->table)
-            ->where($this->getPkName(), $this->getPkValue())
+            ->table(static::$table)
+            ->where(static::getPkName(), $this->getPkValue())
             ->update($this->changed);
 
         $this->driver->connect();
@@ -108,7 +132,7 @@ abstract class Model
         unset($data[$this->getPkName()]);
 
         $this->builder
-            ->table($this->table)
+            ->table(static::$table)
             ->insert($data);
 
         $this->driver->connect();
@@ -119,7 +143,7 @@ abstract class Model
     public function delete(): bool
     {
         $this->builder
-            ->table($this->table)
+            ->table(static::$table)
             ->where($this->pk, '=', $this->getPkValue())
             ->delete();
 
@@ -130,11 +154,11 @@ abstract class Model
     public function toArray(): array
     {
         $data = [];
-        foreach ($this->data as $key => $value) {
-            if (in_array($key, $this->hidden))
-                continue;
-            if (in_array($key, $this->visible))
+        foreach (array_merge($this->data, $this->changed) as $key => $value) {
+            if (in_array($key, static::$fields) || in_array($key, static::$visible))
                 $data[$key] = $value;
+            if (in_array($key, static::$hidden))
+                unset($data[$key]);
         }
         return $data;
     }

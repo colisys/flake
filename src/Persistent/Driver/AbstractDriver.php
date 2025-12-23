@@ -12,7 +12,7 @@ interface AbstractDriver
     public function isConnected(): bool;
     public function getErrorNo(): int;
     public function getError(): ?string;
-    public function query(string $sql, array $bindings = []): Generator;
+    public function query(string $sql, array $bindings = []): ?Generator;
     public function execute(string $sql, array $bindings = []): bool;
     public function getEffectedRows(): int;
     public function getLastInsertId(): int;
