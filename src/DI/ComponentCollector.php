@@ -111,12 +111,8 @@ class ComponentCollector
             function ($path, $namespace) use (&$class_map) {
                 foreach (array_merge(config('dependencies.scan.namespaces', []), ['Flake\\']) as $scanNs) {
                     if (str_starts_with($namespace, $scanNs)) {
-                        $p = array_shift($path);
-                        $class_map[$namespace] = array_merge(
-                            glob($p . '/*.php'),
-                            glob($p . '/*/*.php'),
-                            glob($p . '/**/*.php')
-                        );
+                        $p = array_shift($path);                        
+                        $class_map[$namespace] = static::findPhpFilesRecursively($p);
                     }
                 }
             },
@@ -140,5 +136,27 @@ class ComponentCollector
             }
         }
         return $result;
+    }
+    
+    /**
+     * Find php files recursively
+     *
+     * @param string $dir
+     * @return array
+     */
+    protected static function findPhpFilesRecursively(string $dir): array 
+    {
+        $files = [];
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($dir, \RecursiveDirectoryIterator::SKIP_DOTS)
+        );
+        
+        foreach ($iterator as $file) {
+            if ($file->isFile() && $file->getExtension() === 'php') {
+                $files[] = $file->getPathname();
+            }
+        }
+        
+        return $files;
     }
 }

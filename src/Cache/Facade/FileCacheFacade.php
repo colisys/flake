@@ -174,7 +174,8 @@ class FileCacheFacade implements AbstractFacade
         $key = hash("crc32b", $key);
         $subdir_name = substr($key, 0, 2);
         foreach (glob($this->basePath . "/{$subdir_name}/flake_{$key}_*.cache*") as $file) {
-            return true;
+            [$a, $_] = $this->read($file, $key, null);
+            return $a !== null;
         }
         return false;
     }

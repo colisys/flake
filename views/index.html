@@ -1,0 +1,21 @@
+{{@ header }}
+
+{%if $time > 10 %}
+<h1>123123</h1>
+{% else %}
+<h1>456456</h1>
+{%endif%}
+
+[%counter 10 a/2%]
+{{= $a|print_r }}
+[%endcounter%]
+
+[%counter+ 10 a/2%]
+{{= $a|echo }}
+[%endcounter%]
+
+[%counter- 10 a/2%]
+{{= $a|echo }}
+[%endcounter%]
+
+{{@ footer }}

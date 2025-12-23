@@ -5,7 +5,7 @@ namespace Flake;
 
 
 use Flake\DI\ApplicationContext;
-use Flake\Exceptions\NotSupportHTTPMethodException;
+use Flake\Exception\NotSupportHTTPMethodException;
 
 class App
 {
@@ -41,11 +41,9 @@ class App
 
         $request  = make(Request::class);
         $response = make(Response::class);
-        // TODO: should we sanitize the request?
-        $request->setParams($_REQUEST);
 
         try {
-            $router = Router::buildRouter($request, $response);
+            $router = make(Router::class);
             list($request, $response) = Middleware::run($request, $response);
             Router::dispatch($request, $response, $router);
         } catch (\Throwable $th) {

@@ -16,7 +16,7 @@ class Response
      * @param int $code
      * @return self
      */
-    public function status($code = 200)
+    public function status($code = 200): static
     {
         $this->status = $code;
         http_response_code($code);
@@ -26,12 +26,19 @@ class Response
     /**
      * Set HTTP Header
      *
-     * @param string $name
-     * @param string $value
+     * @param string|array<string,string> $name
+     * @param mixed $value
      * @return self
      */
-    public function header(string $name, string $value): self
+    public function header($name, $value): static
     {
+        if (is_array($name)) {
+            foreach ($name as $key => $value) {
+                $this->header($key, $value);
+            }
+            return $this;
+        }
+
         // For multiple headers with same name, like Set-Cookie
         if (isset($this->headers[$name])) {
             if (!is_array($this->headers[$name]))
@@ -51,7 +58,7 @@ class Response
      *
      * @param mixed $content
      */
-    public function send($content): void
+    public function send($content): static
     {
         if ($content instanceof \SplFileInfo) {
             if ($this->isStreaming) {
@@ -69,17 +76,17 @@ class Response
                 $this->doSend($data);
             }
             unset($content, $data);
-            return;
+            return $this;
         }
 
         if (is_array($content) || is_object($content)) {
             $this->json($content);
-            return;
+            return $this;
         }
 
         $this->doSend($content);
         $this->sent = true;
-        return;
+        return $this;
     }
 
     /**
@@ -87,11 +94,11 @@ class Response
      *
      * @param string $content
      */
-    protected function doSend(string $content): void
+    protected function doSend($content): static
     {
         if (! $this->streaming) {
             echo $content;
-            return;
+            return $this;
         }
 
         if (! $this->isStreaming) {
@@ -101,14 +108,16 @@ class Response
 
         echo $content;
         ob_flush();
+        return $this;
     }
 
     /**
      * Start streaming
      */
-    public function stream(): void
+    public function stream(): static
     {
         $this->streaming = true;
+        return $this;
     }
 
     /**
@@ -135,6 +144,7 @@ class Response
         $filename = basename($filename);
         $this->header('Content-Disposition', "attachment; filename=\"{$filename}\"");
         $this->type($mime);
+        $this->send(file_get_contents($filename));
     }
 
     /**
@@ -158,9 +168,17 @@ class Response
      * @param bool $secure
      * @param bool $httponly
      */
-    public function cookie(string $name, string $value, int $expire = 0, string $path = '/', string $domain = '', bool $secure = false, bool $httponly = true)
-    {
+    public function cookie(
+        string $name,
+        string $value,
+        int $expire = 0,
+        string $path = '/',
+        string $domain = '',
+        bool $secure = false,
+        bool $httponly = true
+    ): static {
         setcookie($name, $value, $expire, $path, $domain, $secure, $httponly);
+        return $this;
     }
 
     /**
@@ -171,10 +189,14 @@ class Response
         setcookie(session_name(), '', time() - 3600, '/');
     }
 
-    public function noCache(): void
+    /**
+     * Disable caching
+     */
+    public function noCache(): static
     {
         $this->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
         $this->header('Pragma', 'no-cache');
+        return $this;
     }
 
     /**
@@ -200,9 +222,10 @@ class Response
      *
      * @param string $type
      */
-    public function type(string $type): void
+    public function type(string $type): static
     {
         $this->header('Content-Type', $type);
+        return $this;
     }
 
     /**
@@ -231,41 +254,6 @@ class Response
                 ->send(json_encode($data, JSON_UNESCAPED_UNICODE));
             $this->sent = true;
         }
-    }
-    /**
-     * Render a PHP view file.
-     *
-     * @param string $view Path relative to project root (without .php)
-     * @param array|object $data Data to be extracted into view
-     */
-    public function render(string $view, array | object $data = []): void
-    {
-        // $base = dirname(__DIR__); // your framework root (e.g., src/../)
-        // $viewPath = $base . '/' . ltrim($view, '/') . '.php';
-
-        // FIXME: rendering a php file is extremely insecure.
-        // Use a template engine instead in the future maybe?
-        $viewPath = App::path() . '/' . ltrim($view, '/') . '.php';
-
-        if (! file_exists($viewPath)) {
-            $this->status(404)->send("View not found: {$viewPath}");
-            return;
-        }
-
-        // Convert object to array for extract()
-        if (is_object($data)) {
-            $data = (array) $data;
-        }
-
-        extract($data, EXTR_SKIP);
-
-        ob_start();
-        include $viewPath;
-        $output = ob_get_clean();
-
-        $this->status(200);
-        header('Content-Type: text/html; charset=utf-8');
-        echo $output;
     }
 
     /**

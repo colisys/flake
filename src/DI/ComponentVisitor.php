@@ -25,7 +25,7 @@ class ComponentVisitor
     {
         if (class_exists($class)) {
             $rclass = new \ReflectionClass($class);
-            $attributes = $rclass->getAttributes(Component::class);
+            $attributes = $rclass->getAttributes();
             $attrs = array_map(fn($a) => $a->getName(), $attributes);
             $is_component = in_array(Component::class, $attrs);
             $components = array_shift($attributes)?->getArguments() ?? [];

@@ -49,7 +49,6 @@ class Factory implements AutoRegister
 
     public static function onAutoRegiste(ContainerInterface $container): void
     {
-        error_log("Cache factory registered");
         if (method_exists($container, 'set'))
             $container->{"set"}(Factory::class, new static($container, config('cache', [])));
     }

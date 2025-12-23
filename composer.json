@@ -23,6 +23,7 @@
   "scripts": {
     "start": [
       "Composer\\Config::disableProcessTimeout",
+      "composer dump-autoload",
       "BASE_DIR=`pwd` php -S 0.0.0.0:8000 -t public"
     ]
   },

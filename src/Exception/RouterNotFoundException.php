@@ -1,5 +1,5 @@
 <?php
 
-namespace Flake\Exceptions;
+namespace Flake\Exception;
 
 class RouterNotFoundException extends \Exception {}

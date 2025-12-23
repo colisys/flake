@@ -2,9 +2,14 @@
 
 namespace Flake;
 
+use Flake\Attribute\Controller\Controller;
+use Flake\Attribute\Controller\RestfulMapping;
 use Flake\DI\ApplicationContext;
-use Flake\Exceptions\NotSupportHTTPMethodException;
-use Flake\Exceptions\RouterDispatchException;
+use Flake\DI\ComponentCollector;
+use Flake\Exception\NotSupportHTTPMethodException;
+use Flake\Exception\RouterDispatchException;
+use Flake\Exception\RouterRegistedException;
+use Flake\View\Renderer;
 
 class Router
 {
@@ -15,29 +20,24 @@ class Router
     /**
      * @var array<string, array<string, \Closure(Request $request, Response $response)|array{0: class-string, 1: string}>>
      */
-    private static array $routes = [];
+    protected static array $routes = [
+        'GET'     => [],
+        'POST'    => [],
+        'PUT'     => [],
+        'DELETE'  => [],
+        'PATCH'   => [],
+        'OPTIONS' => [],
+    ];
 
     /**
      * @var ?\Closure(Request $request, Response $response)
      */
-    private static $fallback = null;
+    protected static $fallback = null;
 
     /**
      * @var ?\Closure(Request $request, Response $response)
      */
-    private static $error = null;
-
-    public function __construct()
-    {
-        $this->routes = [
-            'GET'     => [],
-            'POST'    => [],
-            'PUT'     => [],
-            'DELETE'  => [],
-            'PATCH'   => [],
-            'OPTIONS' => [],
-        ];
-    }
+    protected static $error = null;
 
     /**
      * Add a GET route
@@ -116,13 +116,15 @@ class Router
             default                                   => throw new \InvalidArgumentException('Callback must be callable')
         };
 
-        // TODO: Should we throw an error if the router already registed?
-        if (is_array($method)) {
-            foreach ($method as $m) {
-                self::$routes[$m][$uri] = $callback;
-            }
-        } else {
+        if (!is_array($method)) {
             self::$routes[$method][$uri] = $callback;
+            return;
+        }
+
+        foreach ($method as $m) {
+            if (array_key_exists($uri, self::$routes[$m]))
+                throw new RouterRegistedException("Method {$m} already registed");
+            self::$routes[$m][$uri] = $callback;
         }
     }
 
@@ -139,16 +141,33 @@ class Router
     /**
      * Build the router and get proper handler
      *
-     * @param Request $request
-     * @param Response $response
      * @return \Closure(Request $request, Response $response)
      * @throws NotSupportHTTPMethodException
      */
-    public static function buildRouter(Request $request, Response $response)
+    public static function buildRouter()
     {
+        $request = make(Request::class);
+
         $uri     = $request->uri();
         $method  = $request->method();
-        $routes  = self::$routes;
+
+        // Registe controllers by attribute here
+        $controllers = ComponentCollector::getClassesByAttribute(Controller::class);
+        foreach ($controllers as $controller) {
+            $args =  $controller->getAttributes(Controller::class)[0]->getArguments();
+            $prefix = $args['prefix'] ?? '';
+
+            $methods = $controller->getMethods();
+            foreach ($methods as $rmethod) {
+                if ($mapping = $rmethod->getAttributes(RestfulMapping::class)[0]?->newInstance()) {
+                    $path = str_replace("//", "/", $prefix . '/' . ($mapping->path ?? $rmethod->getName()));
+                    $m = $mapping->method;
+                    self::any($m, $path, [$controller->getName(), $rmethod->getName()]);
+                }
+            }
+        }
+
+        $routes = self::$routes;
 
         // Default 404 fallback (Express-style)
         $handler = self::$fallback ?? function ($req, $res) {
@@ -207,11 +226,15 @@ class Router
      *
      * @param Request $request
      * @param Response $response
-     * @param \Closure(...$args)|array{0: class-string, 1: string} $callback
+     * @param Router $router
      * @throws RouterDispatchException
      */
-    public static function dispatch(Request $request, Response $response, $callback): void
+    public static function dispatch(Request $request, Response $response, Router $router): void
     {
+        // TODO: We should check if the request is valid
+        $request->setParams($_REQUEST);
+        $callback = $router->buildRouter();
+
         try {
             // Reflect the callback to inject parameters
             if (is_callable($callback)) {
@@ -238,7 +261,17 @@ class Router
             }
 
             // Finally, invoke the handler with the prepared arguments
-            $handler(...$invokeArgs);
+            $returns = $handler(...$invokeArgs);
+
+            // Check the handler return value
+            if ($returns instanceof Response) {
+                $response->end();
+            } else if ($returns instanceof Renderer) {
+                $response->send($returns->render());
+            } else {
+                if (!$response->sent)
+                    $response->truncate();
+            }
         } catch (\Throwable $th) {
             if ($th instanceof \ReflectionException) {
                 dd($th);
