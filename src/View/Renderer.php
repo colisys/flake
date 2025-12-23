@@ -79,12 +79,14 @@ class Renderer extends AutoRegisterClass
 
         if ($cache->has($viewPath)) {
             $template = $cache->get($viewPath);
+            $info = $cache->getInfo($viewPath);
             [$_, $template] = explode(PHP_EOL, $template, 2);
             $template = "<?php extract(unserialize('" . serialize($this->data) . "')); ?>\n" . $template;
-            $cache->set($viewPath, $template, $this->cache_ttl);
+            $cache->set($viewPath, $template, ($info['expires'] - time()));
 
             return $response->stream()
                 ->status(200)
+                ->header('Content-Type', 'text/html; charset=utf-8')
                 ->send($this->hit($template))
                 ->end();
         }
@@ -129,6 +131,7 @@ class Renderer extends AutoRegisterClass
 
                 // Send the output to the client
                 return $response->stream()
+                    ->header('Content-Type', 'text/html; charset=utf-8')
                     ->status(200)
                     ->send($output)
                     ->end();

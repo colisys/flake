@@ -58,6 +58,17 @@ class FileCacheFacade implements AbstractFacade
             . hash("crc32b", ""));
     }
 
+    public function getInfo(string $key)
+    {
+        $key = hash("crc32b", $key);
+        $subdir_name = substr($key, 0, 2);
+        foreach (glob($this->basePath . "/{$subdir_name}/flake_{$key}_*.cache*") as $file) {
+            $d = $this->read($file, $key, null);
+            return ['version' => $d[5], 'created' => $d[6], 'expires' => $d[7], 'hash' => $d[8]];
+        }
+        return null;
+    }
+
     public function set($key, $value, $ttl = -1)
     {
         if ($this->has($key))
@@ -144,7 +155,7 @@ class FileCacheFacade implements AbstractFacade
         $data = file_get_contents($file);
         $magic = substr($data, 0, strlen(self::MAGIC));
         if ($magic !== self::MAGIC) {
-            return [$default, 0, false, false, false];
+            return [$default, 0, false, false, false, 0, 0, ''];
         }
         $data = unpack("Cver/Ctag/Ptime/qexpires/Cchidx/a8hash/a*value", substr($data, strlen(self::MAGIC)));
 
@@ -157,7 +168,7 @@ class FileCacheFacade implements AbstractFacade
 
         if ($data['expires'] != -1 && $data['expires'] < time()) {
             $this->delete($key);
-            return [$default, 0, false, false, false];
+            return [$default, 0, false, false, false, 0, 0, ''];
         }
 
         return [
@@ -165,7 +176,11 @@ class FileCacheFacade implements AbstractFacade
             $data['chidx'],
             Trunk::from($data['tag'] & (0x01 << 2) >> 2),
             Compression::from($data['tag'] & (0x01 << 1) >> 1),
-            Serializer::from($data['tag'] & (0x01 << 0))
+            Serializer::from($data['tag'] & (0x01 << 0)),
+            $data['ver'],
+            $data['time'],
+            $data['expires'],
+            $data['hash'],
         ];
     }
 
