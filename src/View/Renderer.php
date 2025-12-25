@@ -202,7 +202,7 @@ class Renderer extends AutoRegisterClass
         // Include the file, and capture the output, this will execute the view
         ob_start();
         include $filename;
-        $output = ob_get_clean();
+        $output = ob_get_contents();
         ob_end_clean();
         fclose($fd);
         return $output;
