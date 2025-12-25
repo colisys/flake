@@ -3,7 +3,7 @@
 namespace Flake\View;
 
 use Exception;
-use Flake\Attributes\Component;
+use Flake\DI\Attributes\Component;
 use Flake\Cache\Facade\AbstractFacade;
 use Flake\DI\ComponentCollector;
 use Flake\DI\Contract\AutoRegisterClass;

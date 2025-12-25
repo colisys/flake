@@ -2,7 +2,7 @@
 
 namespace Flake\Cache;
 
-use Flake\Attributes\Component;
+use Flake\DI\Attributes\Component;
 use Flake\Cache\Exception\CacheNotSupportException;
 use Flake\Cache\Facade\AbstractFacade;
 use Flake\Cache\Facade\FileCacheFacade;

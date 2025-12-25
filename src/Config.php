@@ -2,6 +2,9 @@
 
 namespace Flake;
 
+use Flake\Event\Builtin\ConfigUpdateEvent;
+use Psr\EventDispatcher\EventDispatcherInterface;
+
 class Config
 {
 
@@ -46,7 +49,10 @@ class Config
             }
             $config = &$config[$key];
         }
-        $config[array_shift($keys)] = $value;
+        $key = array_shift($keys);
+        $config[$key] = $value;
+
+        make(EventDispatcherInterface::class)?->dispatch(new ConfigUpdateEvent($key, $value));
     }
 
     public static function all(): array

@@ -2,6 +2,8 @@
 
 namespace Flake;
 
+use Psr\EventDispatcher\EventDispatcherInterface;
+
 class Middleware
 {
     /**
@@ -40,7 +42,10 @@ class Middleware
         while (count($middlewares) > 0) {
             $middleware = array_shift($middlewares);
             $result = $middleware($request, $response, $result);
-            if ($result == null) die();
+            if ($result == null) {
+                make(EventDispatcherInterface::class)?->dispatch($middleware);
+                die();
+            }
             list($request, $response) = is_callable($result) ? $result() : $result;
         }
 

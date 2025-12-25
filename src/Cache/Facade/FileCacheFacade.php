@@ -2,7 +2,7 @@
 
 namespace Flake\Cache\Facade;
 
-use Flake\Attributes\Component;
+use Flake\DI\Attributes\Component;
 use Flake\Cache\Exception\CacheFolderNotWritableException;
 use Flake\Cache\Exception\CacheHashMismatchException;
 use Flake\Cache\Exception\CacheTrunkCorruptionException;

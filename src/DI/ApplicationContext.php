@@ -6,6 +6,7 @@ use Flake\Config;
 use Flake\DI\Exception\MissingDependencyException;
 use Flake\DI\Exception\NotRegistedException;
 use Flake\Env;
+use Flake\Event\Dispatcher;
 use Psr\Container\ContainerInterface;
 use ReflectionClass;
 use ReflectionNamedType;
@@ -46,9 +47,8 @@ class ApplicationContext
         // No user defined constructor
         if (!$rclass->getConstructor()) {
             $instance = new $class();
-            if ($persist)
-                if (method_exists(self::$container, 'set'))
-                    self::$container->{"set"}($class, $instance);
+            if ($persist && method_exists(self::$container, 'set'))
+                self::$container->{"set"}($class, $instance);
             return $instance;
         }
 
@@ -77,9 +77,8 @@ class ApplicationContext
 
         $options = array_merge($dependencies, $options);
         $instance = $rclass->newInstanceArgs($options);
-        if ($persist)
-            if (method_exists(self::$container, 'set'))
-                self::$container->{"set"}($class, $instance);
+        if ($persist && method_exists(self::$container, 'set'))
+            self::$container->{"set"}($class, $instance);
         return $instance;
     }
 
@@ -92,6 +91,7 @@ class ApplicationContext
         // Load config
         make(Config::class, ['basePath' => $basePath]);
         // Initialize component collector
+        // This will scan all components and registe them
         make(ComponentCollector::class, []);
 
         return $context;

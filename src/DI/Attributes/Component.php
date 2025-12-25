@@ -1,6 +1,6 @@
 <?php
 
-namespace Flake\Attributes;
+namespace Flake\DI\Attributes;
 
 use Attribute;
 

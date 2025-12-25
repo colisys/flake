@@ -2,7 +2,8 @@
 
 namespace Flake\DI;
 
-use Flake\Attributes\Component;
+use Flake\DI\Attributes\Component;
+use Flake\DI\Contract\AfterAutoRegister;
 use Flake\DI\Contract\AutoRegister;
 
 use function Flake\dd;
@@ -35,6 +36,7 @@ class ComponentVisitor
      * `m` - methods
      * `c` - constructor
      * `l` - auto register
+     * `d` - after auto register
      * `i` - interfaces
      * `t` - singleton
      */
@@ -45,7 +47,8 @@ class ComponentVisitor
             $attributes = $rclass->getAttributes();
             $attrs = array_map(fn($a) => $a->getName(), $attributes);
             $is_component = in_array(Component::class, $attrs);
-            $components = array_shift($attributes)?->getArguments() ?? [];
+            /** @var Component */
+            $component = $is_component && $attributes[0]?->newInstance();
 
             return [
                 's' => $class,
@@ -57,9 +60,10 @@ class ComponentVisitor
                 ], $rclass->getProperties()),
                 'm' => array_map(fn($m) => $m->getName(), $rclass->getMethods()),
                 'c' => $rclass->getConstructor() !== null,
-                'l' => $is_component && $rclass->implementsInterface(AutoRegister::class) && ($components['auto_register'] ?? true),
+                'l' => $is_component && $rclass->implementsInterface(AutoRegister::class) && ($component?->auto_register ?? true),
+                'd' => $is_component && $rclass->implementsInterface(AfterAutoRegister::class) && ($component?->auto_register ?? true),
                 'i' => array_map(fn($m) => $m->getName(), $rclass->getInterfaces()) ?? [],
-                't' => $is_component && ($components['singleton'] ?? true),
+                't' => $is_component && ($component?->singleton ?? true),
             ];
         }
         return null;

@@ -5,7 +5,10 @@ namespace Flake;
 
 
 use Flake\DI\ApplicationContext;
+use Flake\Event\Builtin\AppExitEvent;
+use Flake\Event\Builtin\AppInitEvent;
 use Flake\Exception\NotSupportHTTPMethodException;
+use Psr\EventDispatcher\EventDispatcherInterface;
 
 class App
 {
@@ -25,6 +28,12 @@ class App
             if (method_exists($container, 'set'))
                 $container->{"set"}(App::class, $this);
         }
+
+        make(EventDispatcherInterface::class)?->dispatch(new AppInitEvent($this->instanceId));
+
+        register_shutdown_function(function () {
+            make(EventDispatcherInterface::class)?->dispatch(new AppExitEvent($this->instanceId));
+        });
     }
 
     /**
@@ -105,8 +114,7 @@ if (!function_exists("make")) {
         if ($container->has($class)) {
             return $container->get($class);
         } else if (class_exists($class)) {
-            ApplicationContext::make($class, $options, $persist);
-            return $container->get($class);
+            return ApplicationContext::make($class, $options, $persist);
         }
         return null;
     }

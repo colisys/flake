@@ -2,6 +2,7 @@
 
 namespace Flake\DI;
 
+use Flake\DI\Attributes\Component;
 use Psr\Container\ContainerInterface;
 use ReflectionClass;
 use ReflectionMethod;
@@ -12,7 +13,7 @@ use function Flake\dd;
 class ComponentCollector
 {
     /**
-     * @var array<string,array{"s":string,"a":string[],"p":array{name:string,type:string,default:mixed},"m":string[],"c":bool,"l":bool,"i":string[],"t":bool}>
+     * @var array<string,array{"s":string,"a":string[],"p":array{name:string,type:string,default:mixed},"m":string[],"c":bool,"l":bool,"d":bool,"i":string[],"t":bool}>
      */
     protected static array $components = [];
 
@@ -20,8 +21,25 @@ class ComponentCollector
         ContainerInterface $container,
     ) {
         self::$components = static::collect($container);
-        foreach (self::getAutoRegisterClassesMethods() as $autoRegisterMethod) {
-            $autoRegisterMethod->invoke(null, $container);
+        foreach (self::getAutoRegisterClassesMethods() as  $class => $autoRegisterMethod) {
+            $reflectionClass = new \ReflectionClass($class);
+            if ($attrs = $reflectionClass->getAttributes(Component::class)) {
+                /**
+                 * @var Component $component
+                 */
+                $component = $attrs[0]->newInstance();
+                if ($component->auto_register) {
+                    $autoRegisterMethod->invoke(null, $container);
+
+                    if ($component->alias !== null)
+                        $container->{"set"}($component->alias, $container->get($reflectionClass->getName()));
+                }
+            }
+        }
+
+        foreach (self::getAfterAutoRegisterClassesMethods() as $class => $autoRegisterMethod) {
+            $class = $container->get($class);
+            $class?->{"onAfterAutoRegiste"}($container);
         }
     }
 
@@ -80,7 +98,7 @@ class ComponentCollector
      * Get class info
      * 
      * @param string $className
-     * @return ?array{"s":string,"a":string[],"p":array{name:string,type:string,default:mixed},"m":string[],"c":bool,"l":bool,"i":string[],"t":bool}
+     * @return ?array{"s":string,"a":string[],"p":array{name:string,type:string,default:mixed},"m":string[],"c":bool,"l":bool,"d":bool,"i":string[],"t":bool}
      */
     public static function getClassInfo(string $className): ?array
     {
@@ -99,6 +117,22 @@ class ComponentCollector
             array_filter(
                 static::$components,
                 fn($info) => $info['l'] ?? false
+            ),
+        );
+    }
+
+    /** 
+     * Get after auto register classes methods
+     * 
+     * @return array<ReflectionMethod>
+     */
+    protected static function getAfterAutoRegisterClassesMethods(): array
+    {
+        return array_map(
+            fn($info) => new ReflectionMethod($info['s'], 'onAfterAutoRegiste'),
+            array_filter(
+                static::$components,
+                fn($info) => $info['d'] ?? false
             ),
         );
     }

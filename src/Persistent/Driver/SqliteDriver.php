@@ -2,11 +2,14 @@
 
 namespace Flake\Persistent\Driver;
 
+use Flake\Persistent\Event\DatabaseQueryEvent;
 use Flake\Persistent\Exception\DatabaseException;
 use Generator;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use SQLite3;
 
 use function Flake\dd;
+use function Flake\make;
 
 class SqliteDriver implements AbstractDriver
 {
@@ -55,6 +58,8 @@ class SqliteDriver implements AbstractDriver
 
             $this->lastSql = $stmt->getSQL(true);
 
+            make(EventDispatcherInterface::class)?->dispatch(new DatabaseQueryEvent($this->lastSql));
+
             if ($result = $stmt->execute()) {
                 $result->reset();
 
@@ -77,6 +82,9 @@ class SqliteDriver implements AbstractDriver
                 $stmt->bindValue($key + 1, $value);
             }
             $this->lastSql = $stmt->getSQL(true);
+
+            make(EventDispatcherInterface::class)?->dispatch(new DatabaseQueryEvent($this->lastSql));
+
             return $stmt->execute() !== false;
         } catch (\Throwable $e) {
             dd(new DatabaseException($this->getError(), $this->getErrorNo(), $e));

@@ -2,7 +2,7 @@
 
 namespace Flake\Persistent;
 
-use Flake\Attributes\Component;
+use Flake\DI\Attributes\Component;
 use Flake\DI\Contract\AutoRegister;
 use Flake\Middleware;
 use Flake\Persistent\Attribute\ModelMapping;

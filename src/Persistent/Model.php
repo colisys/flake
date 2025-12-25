@@ -4,6 +4,12 @@ namespace Flake\Persistent;
 
 use Flake\Persistent\Builder\AbstractBuilder;
 use Flake\Persistent\Driver\AbstractDriver;
+use Flake\Persistent\Event\AfterInsert;
+use Flake\Persistent\Event\AfterSave;
+use Flake\Persistent\Event\BeforeDelete;
+use Flake\Persistent\Event\BeforeInsert;
+use Flake\Persistent\Event\BeforeSave;
+use Psr\EventDispatcher\EventDispatcherInterface;
 
 use function Flake\dd;
 use function Flake\make;
@@ -23,6 +29,16 @@ abstract class Model
 
     protected array $data = [];
     protected array $changed = [];
+
+    protected function getBuilder(): AbstractBuilder
+    {
+        return $this->builder;
+    }
+
+    protected function getDriver(): AbstractDriver
+    {
+        return $this->driver;
+    }
 
     public function __get($name)
     {
@@ -112,6 +128,9 @@ abstract class Model
 
     public function save(): static
     {
+        if (make(EventDispatcherInterface::class)?->dispatch(new BeforeSave($this)) === false)
+            return $this;
+
         if ($this->getPkValue() === null)
             $this->builder
                 ->table(static::$table)
@@ -123,11 +142,18 @@ abstract class Model
 
         $this->driver->connect();
         $this->driver->execute(...$this->builder->build());
-        return $this->refresh();
+        $this->refresh();
+
+        make(EventDispatcherInterface::class)?->dispatch(new AfterSave($this));
+
+        return $this;
     }
 
     public function insert(): static
     {
+        if (make(EventDispatcherInterface::class)?->dispatch(new BeforeInsert($this)) === false)
+            return $this;
+
         $data = array_merge($this->data, $this->changed);
         unset($data[$this->getPkName()]);
 
@@ -137,11 +163,18 @@ abstract class Model
 
         $this->driver->connect();
         $this->driver->execute(...$this->builder->build());
-        return $this->refresh();
+        $this->refresh();
+
+        make(EventDispatcherInterface::class)?->dispatch(new AfterInsert($this));
+
+        return $this;
     }
 
     public function delete(): bool
     {
+        if (make(EventDispatcherInterface::class)?->dispatch(new BeforeDelete($this)) === false)
+            return true;
+
         $this->builder
             ->table(static::$table)
             ->where($this->pk, '=', $this->getPkValue())
@@ -149,6 +182,23 @@ abstract class Model
 
         $this->driver->connect();
         return $this->driver->execute(...$this->builder->build());
+    }
+
+    /**
+     * @param \Closure(AbstractBuilder $builder) $callable
+     * @return \Generator<int,static,>
+     */
+    public static function query($callable)
+    {
+        $driver = make(AbstractDriver::class);
+        $builder = make(AbstractBuilder::class);
+        $builder->table(static::$table);
+        $callable($builder);
+
+        $driver->connect();
+        foreach ($driver->query(...$builder->build()) ?? [] as $value) {
+            yield new static($value);
+        }
     }
 
     public function toArray(): array

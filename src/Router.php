@@ -6,11 +6,13 @@ use Flake\Attribute\Controller\Controller;
 use Flake\Attribute\Controller\RestfulMapping;
 use Flake\DI\ApplicationContext;
 use Flake\DI\ComponentCollector;
+use Flake\Event\Builtin\RouterDispatchFailedEvent;
 use Flake\Exception\NotSupportHTTPMethodException;
 use Flake\Exception\RouterDispatchException;
 use Flake\Exception\RouterRegistedException;
 use Flake\Persistent\Model;
 use Flake\View\Renderer;
+use Psr\EventDispatcher\EventDispatcherInterface;
 
 class Router
 {
@@ -272,11 +274,12 @@ class Router
                     $response->truncate();
             }
         } catch (\Throwable $th) {
+            make(EventDispatcherInterface::class)?->dispatch(new RouterDispatchFailedEvent($th));
+
             if ($th instanceof \ReflectionException) {
                 dd($th);
             }
 
-            // TODO: need to dispatch an event?
             if (isset(self::$error) && is_callable(self::$error)) {
                 $errorHandler = self::$error;
                 $errorHandler($request, $response, $th);
