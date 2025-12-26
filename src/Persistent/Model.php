@@ -221,7 +221,31 @@ abstract class Model
     }
 
     /**
-     * Get the value of a column, this will ignore visiblity and hidden columns.
+     * Get a list of column values
+     * 
+     * @param array|string|\Closure(AbstractBuilder $builder) $column
+     * @return \Generator<int,mixed,>
+     */
+    public static function column($column): ?\Generator
+    {
+        $builder = make(AbstractBuilder::class);
+        $driver = make(AbstractDriver::class);
+
+        $builder->table(static::$table);
+        if (is_callable($column))
+            $column($builder);
+        if (is_string($column) || is_array($column))
+            $builder->select($column);
+
+        $driver->connect();
+        foreach ($driver->query(...$builder->build()) as $value) {
+            if (count($value)) yield $value[key($value)];
+            else yield $value[$column];
+        }
+    }
+
+    /**
+     * Get the value of a column from the model, this will ignore visiblity and hidden columns.
      * 
      * @param string $column
      * @return mixed

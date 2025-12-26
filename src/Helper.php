@@ -88,6 +88,8 @@ if (!function_exists("dd")) {
             fwrite($fd, $colors['red'] . trim(var_export(debug_backtrace(), true), "\n") . $colors['reset'] . "\n");
         } elseif ($withDump) {
             fwrite($fd, $colors['yellow'] . "--[VAR]-----------------------------------------" . $colors['reset'] . "\n");
+            if (is_object($data))
+                fwrite($fd, $colors['bold'] . get_class($data) . " #" . spl_object_id($data) . $colors['reset'] . "\n");
             fwrite($fd, $colors['magenta'] . trim(var_export($data, true), "\n") . $colors['reset'] . "\n");
         }
         fwrite($fd, $colors['cyan'] . "-----------------------------------------[END]--" . $colors['reset'] . "\n");

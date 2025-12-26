@@ -11,7 +11,7 @@ interface AbstractBuilder
     /**
      * Set the columns to select
      */
-    public function columns(array $columns): static;
+    public function columns(array $columns, bool $replace = false): static;
 
     /**
      * Set the where clause
@@ -75,7 +75,11 @@ interface AbstractBuilder
     /**
      * Prepare for select
      */
-    public function select(array|string $column = '*'): static;
+    public function select(array|string $column = '*', bool $replace = false): static;
+    /**
+     * Select raw query
+     */
+    public function selectRaw(string $raw, bool $replace = false): static;
     /**
      * Prepare for insert
      */

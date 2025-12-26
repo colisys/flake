@@ -25,14 +25,22 @@ class Middleware extends AutoRegisterClass
     /**
      * Add a middleware to the stack
      *
-     * @param \Closure(Request &$request, Response &$response, \Closure $next) $middleware
+     * @param array{0:class-string,1:string}|\Closure(Request &$request, Response &$response, \Closure $next) $middleware
      */
-    public static function use(callable $middleware): void
+    public static function use($middleware): void
     {
-        if (! is_callable($middleware)) {
-            throw new \Exception("Middleware must be a callable.");
+        if (is_callable($middleware)) {
+            self::$middlewares[] = $middleware;
+            return;
         }
-        self::$middlewares[] = $middleware;
+
+        if (is_array($middleware) && count($middleware) == 2) {
+            self::$middlewares[] = ComponentCollector::getMethodByName($middleware[0], $middleware[1])
+                ?->getClosure(make($middleware[0])) ?? throw new \Exception("Method not found");
+            return;
+        }
+
+        throw new \Exception("Middleware must be callable.");
     }
 
     /**

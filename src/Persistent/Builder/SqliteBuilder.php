@@ -25,8 +25,11 @@ class SqliteBuilder implements AbstractBuilder
         return $this;
     }
 
-    public function columns(array $columns): static
+    public function columns(array $columns, bool $replace = false): static
     {
+        if ($replace)
+            $this->columns = [];
+
         $this->columns = $columns;
         return $this;
     }
@@ -92,13 +95,24 @@ class SqliteBuilder implements AbstractBuilder
         return $this;
     }
 
-    public function select(array|string $column = '*'): static
+    public function select(array|string|null $column = null, bool $replace = false): static
     {
+        if ($replace)
+            $this->columns = [];
+
         if (is_string($column)) {
-            $this->columns = [$column];
-        } else {
+            $this->columns[] = [$column];
+        } else if (is_array($column)) {
             $this->columns = $column;
         }
+        return $this;
+    }
+
+    public function selectRaw(?string $raw, bool $replace = false): static
+    {
+        if (is_string($raw))
+            $this->columns[] = $raw;
+
         return $this;
     }
 

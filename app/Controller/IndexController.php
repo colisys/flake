@@ -17,6 +17,7 @@ class IndexController
     public function index(#[ModelMapping(pk: '>id')] UserModel $model)
     {
         dd($model->toArray());
+        dd(UserModel::count());
         return view('index', ['time' => time()]);
     }
 }

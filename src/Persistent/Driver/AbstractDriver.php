@@ -13,6 +13,8 @@ interface AbstractDriver
     public function getErrorNo(): int;
     public function getError(): ?string;
     public function query(string $sql, array $bindings = []): ?Generator;
+    public function fetchOne(string $sql, array $bindings = []): ?array;
+    public function fetchAll(string $sql, array $bindings = []): ?array;
     public function execute(string $sql, array $bindings = []): bool;
     public function getEffectedRows(): int;
     public function getLastInsertId(): int;

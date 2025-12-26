@@ -73,6 +73,24 @@ class SqliteDriver implements AbstractDriver
         return null;
     }
 
+    public function fetchOne(string $sql, array $bindings = []): ?array
+    {
+        $result = $this->query($sql, $bindings);
+        if ($result) {
+            return $result->current();
+        }
+        return null;
+    }
+
+    public function fetchAll(string $sql, array $bindings = []): ?array
+    {
+        $result = $this->query($sql, $bindings);
+        if ($result) {
+            return iterator_to_array($result);
+        }
+        return null;
+    }
+
     public function execute(string $sql, array $bindings = []): bool
     {
         try {
