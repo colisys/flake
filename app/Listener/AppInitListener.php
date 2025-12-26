@@ -12,7 +12,8 @@ use function Flake\dd;
 class AppInitListener
 {
     #[EventHandler(AppInitEvent::class)]
-    public function handle(object $event) {
+    public function handle(object $event)
+    {
         dd($event);
     }
 }

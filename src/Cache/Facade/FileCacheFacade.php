@@ -8,6 +8,7 @@ use Flake\Cache\Exception\CacheHashMismatchException;
 use Flake\Cache\Exception\CacheTrunkCorruptionException;
 use Flake\Cache\Exception\CacheVersionException;
 
+use function Flake\dd;
 use function Flake\DI\rscandir;
 
 enum Compression: int
@@ -192,13 +193,14 @@ class FileCacheFacade implements AbstractFacade
         return [
             $data['value'],
             $data['chidx'],
-            Trunk::from($data['tag'] & (0x01 << 2) >> 2),
-            Compression::from($data['tag'] & (0x01 << 1) >> 1),
+            Trunk::from(($data['tag'] & (0x01 << 2)) >> 2),
+            Compression::from(($data['tag'] & (0x01 << 1)) >> 1),
             Serializer::from($data['tag'] & (0x01 << 0)),
             $data['ver'],
             $data['time'],
             $data['expires'],
             $data['hash'],
+            $data['tag'],
         ];
     }
 
