@@ -70,7 +70,7 @@ class Factory implements AutoRegister
             }
 
             foreach ($rmethod->getParameters() as $param) {
-                if (is_subclass_of($param->getType()->getName(), Model::class, true)) {
+                if (is_subclass_of($param->getType()?->getName(), Model::class, true)) {
                     if ($instance = $param->getAttributes(ModelMapping::class)[0]?->newInstance()) {
                         $pkId = $instance->pk;
                         $paramName = $param->getName();

@@ -48,7 +48,7 @@ class ComponentCollector
      * 
      * @param string $class
      * @param string $methodName
-     * @return \ReflectionMethod|null
+     * @return ReflectionMethod|null
      */
     public static function getMethodByName(string $class, string $methodName): \ReflectionMethod|null
     {
@@ -65,7 +65,7 @@ class ComponentCollector
      * Get classes by attribute name
      *
      * @param string $attributeName
-     * @return array<\ReflectionClass>
+     * @return array<string,ReflectionClass>
      */
     public static function getClassesByAttribute(string $attributeName): array
     {
@@ -82,6 +82,7 @@ class ComponentCollector
      * Get classes that implements an interface
      * 
      * @param string $interfaceName
+     * @return array<string,ReflectionClass>
      */
     public static function getClassesByInterface(string $interfaceName): array
     {

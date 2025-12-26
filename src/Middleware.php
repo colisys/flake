@@ -2,14 +2,25 @@
 
 namespace Flake;
 
+use Flake\Contract\MiddlewareInterface;
+use Flake\DI\Attributes\Component;
+use Flake\DI\ComponentCollector;
+use Flake\DI\Contract\AutoRegisterClass;
+use Flake\Event\Builtin\MiddlewareExecutionFailedEvent;
+use Psr\Container\ContainerInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
 
-class Middleware
+use function Flake\make;
+
+#[Component()]
+class Middleware extends AutoRegisterClass
 {
     /**
      * @var array<\Closure(Request $request, Response $response, \Closure $next)>
      */
     protected static array $middlewares = [];
+
+    public function __construct(protected ContainerInterface $container) {}
 
     /**
      * Add a middleware to the stack
@@ -42,13 +53,27 @@ class Middleware
         while (count($middlewares) > 0) {
             $middleware = array_shift($middlewares);
             $result = $middleware($request, $response, $result);
+            if (is_subclass_of($result, Response::class) || is_a($result, Response::class)) {
+                if (!$result->sent)
+                    $result->truncate();
+                die();
+            }
+
             if ($result == null) {
-                make(EventDispatcherInterface::class)?->dispatch($middleware);
+                make(EventDispatcherInterface::class)?->dispatch(new MiddlewareExecutionFailedEvent($middleware));
                 die();
             }
             list($request, $response) = is_callable($result) ? $result() : $result;
         }
 
         return [$request, $response];
+    }
+
+    public function onAfterAutoRegiste(ContainerInterface $container): void
+    {
+        $classes = ComponentCollector::getClassesByInterface(MiddlewareInterface::class);
+        foreach ($classes as $class => $rclass) {
+            self::use($rclass->getMethod("handle")->getClosure(make($class)));
+        }
     }
 }

@@ -17,4 +17,5 @@ class UserModel extends Model
     public static string $table = 'users';
     public static array $fields = ['id', 'username', 'password', 'time'];
     public static array $fillable = ['username', 'password', 'time'];
+    public static array $visible = ['id', 'username', 'time'];
 }

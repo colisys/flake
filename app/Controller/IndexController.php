@@ -16,7 +16,7 @@ class IndexController
     #[RestfulMapping('GET', '/hello')]
     public function index(#[ModelMapping(pk: '>id')] UserModel $model)
     {
-        dd($model);
+        dd($model->toArray());
         return view('index', ['time' => time()]);
     }
 }

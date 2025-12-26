@@ -140,6 +140,7 @@ class Response
      */
     public function attachment(string $filename): void
     {
+        $this->sent = true;
         $mime     = mime_content_type($filename);
         $filename = basename($filename);
         $this->header('Content-Disposition', "attachment; filename=\"{$filename}\"");
@@ -154,7 +155,9 @@ class Response
      */
     public function download(string $filename): void
     {
+        $this->sent = true;
         $this->header('Content-Disposition', "attachment; filename=\"{$filename}\"");
+        $this->send(file_get_contents($filename));
     }
 
     /**
@@ -204,6 +207,7 @@ class Response
      */
     public function truncate(): void
     {
+        $this->sent = true;
         $this->status(204)->send('');
     }
 

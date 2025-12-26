@@ -40,19 +40,38 @@ abstract class Model
         return $this->driver;
     }
 
+    /**
+     * Getter for model properties
+     * 
+     * This will check if the property is in the visible array, 
+     * if not, it will return the property value.
+     * 
+     * @param string $name
+     * @return mixed
+     */
     public function __get($name)
     {
-        if (array_key_exists($name, $this->data)) {
-            if (array_key_exists($name, $this->changed))
-                return $this->changed[$name];
-            return $this->data[$name];
-        }
-        if (in_array($name, static::$hidden))
-            return null;
+        $visibles = static::$visible;
+        if (!count($visibles)) $visibles = static::$fields;
+        if (in_array($name, $visibles))
+            if (array_key_exists($name, $this->data)) {
+                if (array_key_exists($name, $this->changed))
+                    return $this->changed[$name];
+                return $this->data[$name];
+            }
 
         return $this->{$name};
     }
 
+    /**
+     * Setter for model properties
+     * 
+     * This will check if the property is in the fillable array, 
+     * if not, it will set the property value.
+     * 
+     * @param string $name
+     * @param mixed $value
+     */
     public function __set($name, $value)
     {
         if (in_array($name, static::$fillable)) {
@@ -201,11 +220,38 @@ abstract class Model
         }
     }
 
+    /**
+     * Get the value of a column, this will ignore visiblity and hidden columns.
+     * 
+     * @param string $column
+     * @return mixed
+     */
+    public function get($column = null)
+    {
+        if (!isset($column))
+            return $this;
+
+        if (is_string($column))
+            if (array_key_exists($column, $this->changed))
+                return $this->changed[$column];
+            else if (array_key_exists($column, $this->data))
+                return $this->data[$column];
+
+        if (is_array($column))
+            return array_filter($this->toArray(), function ($key) use ($column) {
+                return in_array($key, $column);
+            }, ARRAY_FILTER_USE_KEY);
+
+        return null;
+    }
+
     public function toArray(): array
     {
         $data = [];
+        $visibles = static::$visible;
+        if (!count($visibles)) $visibles = static::$fields;
         foreach (array_merge($this->data, $this->changed) as $key => $value) {
-            if (in_array($key, static::$fields) || in_array($key, static::$visible))
+            if (in_array($key, $visibles))
                 $data[$key] = $value;
             if (in_array($key, static::$hidden))
                 unset($data[$key]);

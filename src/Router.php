@@ -3,6 +3,11 @@
 namespace Flake;
 
 use Flake\Attribute\Controller\Controller;
+use Flake\Attribute\Controller\DeleteMapping;
+use Flake\Attribute\Controller\GetMapping;
+use Flake\Attribute\Controller\PatchMapping;
+use Flake\Attribute\Controller\PostMapping;
+use Flake\Attribute\Controller\PutMapping;
 use Flake\Attribute\Controller\RestfulMapping;
 use Flake\DI\ApplicationContext;
 use Flake\DI\ComponentCollector;
@@ -166,6 +171,33 @@ class Router
                     $path = str_replace("//", "/", $prefix . '/' . ($mapping->path ?? $rmethod->getName()));
                     $m = $mapping->method;
                     self::any($m, $path, [$controller->getName(), $rmethod->getName()]);
+                }
+
+                // TODO: too much code duplication
+                if ($mapping = $rmethod->getAttributes(GetMapping::class)) {
+                    $mapping = $mapping[0]?->newInstance();
+                    $path = str_replace("//", "/", $prefix . '/' . ($mapping->path ?? $rmethod->getName()));
+                    self::get($path, [$controller->getName(), $rmethod->getName()]);
+                }
+                if ($mapping = $rmethod->getAttributes(PostMapping::class)) {
+                    $mapping = $mapping[0]?->newInstance();
+                    $path = str_replace("//", "/", $prefix . '/' . ($mapping->path ?? $rmethod->getName()));
+                    self::post($path, [$controller->getName(), $rmethod->getName()]);
+                }
+                if ($mapping = $rmethod->getAttributes(PutMapping::class)) {
+                    $mapping = $mapping[0]?->newInstance();
+                    $path = str_replace("//", "/", $prefix . '/' . ($mapping->path ?? $rmethod->getName()));
+                    self::put($path, [$controller->getName(), $rmethod->getName()]);
+                }
+                if ($mapping = $rmethod->getAttributes(DeleteMapping::class)) {
+                    $mapping = $mapping[0]?->newInstance();
+                    $path = str_replace("//", "/", $prefix . '/' . ($mapping->path ?? $rmethod->getName()));
+                    self::delete($path, [$controller->getName(), $rmethod->getName()]);
+                }
+                if ($mapping = $rmethod->getAttributes(PatchMapping::class)) {
+                    $mapping = $mapping[0]?->newInstance();
+                    $path = str_replace("//", "/", $prefix . '/' . ($mapping->path ?? $rmethod->getName()));
+                    self::patch($path, [$controller->getName(), $rmethod->getName()]);
                 }
             }
         }
