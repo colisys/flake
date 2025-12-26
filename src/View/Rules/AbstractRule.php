@@ -21,4 +21,9 @@ abstract class AbstractRule implements Rule
     public static bool $selfClosing = false;
 
     public static bool $fullContext = false;
+
+    public static function test(string $content): bool
+    {
+        return preg_match('#' . self::$leftMark . '.*' . self::$rightMark . '#', $content) !== false;
+    }
 }

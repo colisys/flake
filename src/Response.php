@@ -28,9 +28,10 @@ class Response
      *
      * @param string|array<string,string> $name
      * @param mixed $value
+     * @param bool $replace
      * @return self
      */
-    public function header($name, $value): static
+    public function header($name, $value, bool $replace = true): static
     {
         if (is_array($name)) {
             foreach ($name as $key => $value) {
@@ -43,11 +44,13 @@ class Response
         if (isset($this->headers[$name])) {
             if (!is_array($this->headers[$name]))
                 $this->headers[$name] = [$this->headers[$name]];
+            if ($replace)
+                $this->headers[$name] = [];
             $this->headers[$name][] = $value;
-            header("{$name}: {$value}", false);
+            header("{$name}: {$value}", $replace);
         } else {
             $this->headers[$name] = $value;
-            header("{$name}: {$value}");
+            header("{$name}: {$value}", $replace);
         }
 
         return $this;
@@ -90,6 +93,19 @@ class Response
     }
 
     /**
+     * Get HTTP Header
+     * 
+     * @param string $name
+     * @return array<array-key,string>
+     */
+    protected function getHeader(string $name)
+    {
+        return array_filter($this->headers, function ($key) use ($name) {
+            return strtolower($key) === strtolower($name);
+        }, ARRAY_FILTER_USE_KEY);
+    }
+
+    /**
      * Send content
      *
      * @param string $content
@@ -107,7 +123,8 @@ class Response
         }
 
         echo $content;
-        ob_flush();
+        if (! $this->isStreaming)
+            ob_flush();
         return $this;
     }
 
@@ -135,6 +152,9 @@ class Response
 
     /**
      * Send file as attachment
+     * 
+     * This will also set Content-Type header based on file extension, and stream the file,
+     * i.e. as attachment, no output buffering.
      *
      * @param string $filename
      */
@@ -150,13 +170,16 @@ class Response
 
     /**
      * Send file as inline
+     * 
+     * This will write the file to the output buffer and set the content type to the mime type of the file.
      *
      * @param string $filename
      */
     public function download(string $filename): void
     {
         $this->sent = true;
-        $this->header('Content-Disposition', "attachment; filename=\"{$filename}\"");
+        $basename = basename($filename);
+        $this->header('Content-Disposition', "attachment; filename=\"{$basename}\"");
         $this->send(file_get_contents($filename));
     }
 

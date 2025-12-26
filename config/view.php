@@ -24,6 +24,8 @@ return [
         \Flake\View\Rules\Literal::class,
         \Flake\View\Rules\Loop::class,
         \Flake\View\Rules\Variable::class,
+        \Flake\View\Rules\Code::class,
+        \Flake\View\Rules\Raw::class,
 
         // This may be useful for security, however, it may break some normal views
         \Flake\View\Rules\XSSClean::class,

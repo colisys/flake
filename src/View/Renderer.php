@@ -9,12 +9,15 @@ use Flake\DI\ComponentCollector;
 use Flake\DI\Contract\AutoRegisterClass;
 use Flake\Response;
 use Flake\View\Attribute\Rule;
+use Flake\View\Exception\RendererException;
 use Flake\View\Rules\AbstractRule;
 use Flake\View\Rules\XSSClean;
 use Psr\Container\ContainerInterface;
 
+use function Flake\cli_log;
 use function Flake\config;
 use function Flake\dd;
+use function Flake\df;
 use function Flake\make;
 
 #[Component()]
@@ -193,19 +196,33 @@ class Renderer extends AutoRegisterClass
 
     public function hit(...$data)
     {
-        // Create a temporary file
-        $fd = tmpfile();
-        foreach ($data as $d)
-            fwrite($fd, $d);
-        $filename = stream_get_meta_data($fd)['uri'];
+        try {
+            // Create a temporary file
+            $fd = tmpfile();
+            foreach ($data as $d)
+                fwrite($fd, $d);
+            $filename = stream_get_meta_data($fd)['uri'];
 
-        // Include the file, and capture the output, this will execute the view
-        ob_start();
-        include $filename;
-        $output = ob_get_contents();
-        ob_end_clean();
-        fclose($fd);
-        return $output;
+            // Include the file, and capture the output, this will execute the view
+            ob_start();
+            include $filename;
+            $output = ob_get_contents();
+            ob_end_clean();
+            fclose($fd);
+            return $output;
+        } catch (\Throwable $th) {
+            cli_log(
+                'Error rendering view: ' . $th->getMessage(),
+                'File: ' . $th->getFile() . ' on line ' . $th->getLine(),
+                df(file($th->getFile()), $th->getLine() - 1, return: true)
+            );
+
+            throw new RendererException(
+                'Error rendering view: ' . $th->getMessage(),
+                $th->getCode(),
+                $th
+            );
+        }
     }
 }
 

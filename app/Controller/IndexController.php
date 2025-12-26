@@ -18,6 +18,6 @@ class IndexController
     {
         dd($model->toArray());
         dd(UserModel::count());
-        return view('index', ['time' => time()]);
+        return view('index', ['time' => time(), 'user' => $model->toArray()]);
     }
 }

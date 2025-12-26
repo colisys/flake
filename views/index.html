@@ -18,4 +18,13 @@
 {{= $a|echo }}
 [%endcounter%]
 
+{{:<script>alert(1)</script>:}}
+{{!<script>alert(2)</script>!}}
+
+{%if $user %}
+<h1>Welcome, {{= $user.username|echo }}.</h1>
+{% else %}
+<h1>Please login.</h1>
+{% endif %}
+
 {{@ footer noxss}}

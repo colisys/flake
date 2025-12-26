@@ -304,6 +304,8 @@ class Router
             } else {
                 if (!$response->sent)
                     $response->truncate();
+                else
+                    $response->end();
             }
         } catch (\Throwable $th) {
             make(EventDispatcherInterface::class)?->dispatch(new RouterDispatchFailedEvent($th));
